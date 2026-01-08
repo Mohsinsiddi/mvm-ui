@@ -242,18 +242,25 @@ function ContractDetail({
       setLoading(true)
       setError('')
       try {
-        const [contractRes, mbiRes] = await Promise.all([
-          api.getContract(address),
-          api.getContractMBI(address)
-        ])
-        setContract(contractRes.contract || contractRes)
-        setMbi(mbiRes.mbi || mbiRes)
+        // Get contract details - includes functions, variables, mappings at top level
+        const contractRes = await api.getContract(address)
         
-        // Load contract transactions
+        // The response has contract info and functions/variables/mappings at top level
+        setContract(contractRes.contract || contractRes)
+        
+        // Build MBI from the response
+        setMbi({
+          functions: contractRes.functions || [],
+          variables: contractRes.variables || [],
+          mappings: contractRes.mappings || [],
+        })
+        
+        // Contract transactions - skip if fails (some backends don't support this)
         try {
           const txRes = await api.getAddressTransactions(address)
           setTransactions(txRes.transactions || [])
         } catch {
+          // Transactions endpoint might not work for contracts
           setTransactions([])
         }
       } catch (err: any) {
@@ -727,9 +734,27 @@ function ContractFunctions({
     )
   }
 
+  // Helper to check if function is a view function
+  const isViewFunction = (f: any): boolean => {
+    if (!f.modifiers || !Array.isArray(f.modifiers)) return false
+    return f.modifiers.some((m: any) => {
+      // Handle string modifiers
+      if (typeof m === 'string') {
+        return m.toLowerCase().includes('view')
+      }
+      // Handle object modifiers like {type: "View"}
+      if (typeof m === 'object' && m !== null) {
+        return Object.values(m).some((v: any) => 
+          typeof v === 'string' && v.toLowerCase().includes('view')
+        )
+      }
+      return false
+    })
+  }
+
   // Separate view and write functions
-  const viewFunctions = functions.filter(f => f.modifiers?.includes('view'))
-  const writeFunctions = functions.filter(f => !f.modifiers?.includes('view'))
+  const viewFunctions = functions.filter(isViewFunction)
+  const writeFunctions = functions.filter(f => !isViewFunction(f))
 
   return (
     <div className="space-y-4">
@@ -835,8 +860,29 @@ function FunctionCard({
 
     try {
       if (isView) {
-        const res = await api.callContractView(contractAddress, func.name, args)
-        setResult(res.result ?? res.value ?? res)
+        let res = await api.callContractView(contractAddress, func.name, args)
+        let value = res.result ?? res.data ?? res.value
+        
+        // If result is null and function looks like a getter, try auto-getter
+        // getCount → get_count, getValue → get_value, etc.
+        if ((value === null || value === undefined) && func.name.startsWith('get')) {
+          const autoGetterName = func.name.replace(/([A-Z])/g, '_$1').toLowerCase()
+          // getCount → get_count
+          try {
+            const autoRes = await api.callContractView(contractAddress, autoGetterName, args)
+            value = autoRes.result ?? autoRes.data ?? autoRes.value
+          } catch {
+            // Auto-getter failed, use original result
+          }
+        }
+        
+        if (value !== null && value !== undefined) {
+          setResult(value)
+        } else if (res.success) {
+          setResult('(no return value)')
+        } else {
+          setResult(res)
+        }
       } else {
         if (!isConnected || !walletAddress || !privateKey) {
           onConnectWallet()
@@ -875,15 +921,22 @@ function FunctionCard({
         <div className="flex items-center gap-3">
           {expanded ? <ChevronDown size={16} className="text-mist" /> : <ChevronRight size={16} className="text-mist" />}
           <code className="font-mono font-medium text-ghost">{func.name}</code>
-          {func.modifiers?.map((mod: string) => (
-            <span key={mod} className={`text-xs px-2 py-0.5 rounded-full ${
-              mod === 'view' ? 'bg-neon/20 text-neon' :
-              mod === 'public' ? 'bg-electric/20 text-electric' :
-              'bg-deep text-mist'
-            }`}>
-              {mod}
-            </span>
-          ))}
+          {func.modifiers?.map((mod: any, idx: number) => {
+            const modStr = typeof mod === 'string' ? mod : String(mod)
+            const modLower = modStr.toLowerCase()
+            return (
+              <span key={idx} className={`text-xs px-2 py-0.5 rounded-full ${
+                modLower.includes('view') ? 'bg-neon/20 text-neon' :
+                modLower.includes('public') ? 'bg-electric/20 text-electric' :
+                modLower.includes('write') ? 'bg-warning/20 text-warning' :
+                modLower.includes('payable') ? 'bg-sol/20 text-sol' :
+                modLower.includes('owner') ? 'bg-rust/20 text-rust' :
+                'bg-deep text-mist'
+              }`}>
+                {modStr}
+              </span>
+            )
+          })}
         </div>
         <div className="flex items-center gap-2 text-sm text-mist">
           {func.args?.length > 0 && (
@@ -1077,10 +1130,11 @@ function DeployContract({
     setLogs(prev => [...prev.slice(-20), `[${time}] ${msg}`])
   }
 
+  // Initial compile on mount
   useEffect(() => {
     const result = compile(code)
     setCompileResult(result)
-  }, [code])
+  }, []) // Only run once on mount
 
   const handleDeploy = async () => {
     if (!isConnected || !walletAddress || !privateKey) {
@@ -1137,31 +1191,61 @@ function DeployContract({
             <Code size={16} className="text-cyber" />
             <span className="font-medium text-ghost">Mosh Editor</span>
           </div>
-          <div className="relative">
+          <div className="flex items-center gap-2">
+            {/* Compile Button */}
             <button
-              onClick={() => setShowSamples(!showSamples)}
-              className="btn-ghost text-sm flex items-center gap-1"
+              onClick={() => {
+                const result = compile(code)
+                setCompileResult(result)
+                if (result.success) {
+                  addLog('✅ Compiled successfully!')
+                  addLog(`📝 Contract: ${result.json?.name}`)
+                  addLog(`📊 Variables: ${result.json?.variables.length}, Functions: ${result.json?.functions.length}`)
+                  console.log('Compile result:', result.json)
+                } else {
+                  addLog('❌ Compilation failed')
+                  result.errors?.forEach((err: any) => {
+                    const errMsg = typeof err === 'string' 
+                      ? err 
+                      : err.message 
+                        ? `Line ${err.line || '?'}: ${err.message}`
+                        : JSON.stringify(err)
+                    addLog(`   ${errMsg}`)
+                  })
+                }
+              }}
+              className="btn-primary text-sm flex items-center gap-2"
             >
-              Load Sample
-              <ChevronDown size={14} />
+              <Play size={14} />
+              Compile
             </button>
-            {showSamples && (
-              <div className="absolute right-0 mt-1 w-48 py-2 bg-abyss border border-deep rounded-lg shadow-xl z-10">
-                {Object.entries(SAMPLE_CONTRACTS).map(([name, sampleCode]) => (
-                  <button
-                    key={name}
-                    onClick={() => {
-                      setCode(sampleCode)
-                      setShowSamples(false)
-                      setDeployResult(null)
-                    }}
-                    className="w-full px-4 py-2 text-left text-sm text-mist hover:text-ghost hover:bg-deep transition-colors"
-                  >
-                    {name.charAt(0).toUpperCase() + name.slice(1)}
-                  </button>
-                ))}
-              </div>
-            )}
+            
+            <div className="relative">
+              <button
+                onClick={() => setShowSamples(!showSamples)}
+                className="btn-ghost text-sm flex items-center gap-1"
+              >
+                Load Sample
+                <ChevronDown size={14} />
+              </button>
+              {showSamples && (
+                <div className="absolute right-0 mt-1 w-48 py-2 bg-abyss border border-deep rounded-lg shadow-xl z-10">
+                  {Object.entries(SAMPLE_CONTRACTS).map(([name, sampleCode]) => (
+                    <button
+                      key={name}
+                      onClick={() => {
+                        setCode(sampleCode)
+                        setShowSamples(false)
+                        setDeployResult(null)
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm text-mist hover:text-ghost hover:bg-deep transition-colors"
+                    >
+                      {name.charAt(0).toUpperCase() + name.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
         <textarea
@@ -1197,8 +1281,15 @@ function DeployContract({
 
           {compileResult?.errors && compileResult.errors.length > 0 && (
             <div className="p-3 bg-error/10 border border-error/30 rounded-lg mb-4">
-              {compileResult.errors.map((err, i) => (
-                <div key={i} className="text-sm text-error">{typeof err === 'string' ? err : err.message || String(err)}</div>
+              {compileResult.errors.map((err: any, i: number) => (
+                <div key={i} className="text-sm text-error">
+                  {typeof err === 'string' 
+                    ? err 
+                    : err.message 
+                      ? `Line ${err.line || '?'}: ${err.message}` 
+                      : JSON.stringify(err)
+                  }
+                </div>
               ))}
             </div>
           )}
@@ -1218,6 +1309,19 @@ function DeployContract({
                 <div className="text-lg font-bold text-ghost">{compileResult.json.functions.length}</div>
               </div>
             </div>
+          )}
+
+          {/* Show Compiled JSON */}
+          {compileResult?.success && compileResult.json && (
+            <details className="mt-4">
+              <summary className="cursor-pointer text-sm text-mist hover:text-ghost flex items-center gap-2">
+                <Terminal size={14} />
+                Show Compiled JSON
+              </summary>
+              <pre className="mt-2 p-3 bg-void border border-deep rounded-lg text-xs text-ghost overflow-auto max-h-[300px]">
+                {JSON.stringify(compileResult.json, null, 2)}
+              </pre>
+            </details>
           )}
         </Card>
 

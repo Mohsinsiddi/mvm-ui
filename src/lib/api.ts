@@ -173,8 +173,10 @@ class ApiClient {
     return this.fetch(`/contract/${address}/mapping/${name}/${key}`)
   }
 
-  async callContractView(address: string, method: string, args: any[] = []): Promise<any> {
-    return this.fetch(`/contract/${address}/call/${method}?args=${encodeURIComponent(JSON.stringify(args))}`)
+  async callContractView(address: string, method: string, args: string[] = []): Promise<any> {
+    // Backend expects comma-separated args, not JSON array
+    const argsStr = args.length > 0 ? `?args=${encodeURIComponent(args.join(','))}` : ''
+    return this.fetch(`/contract/${address}/call/${method}${argsStr}`)
   }
 
   // ==================== TRANSACTION SIGNING (VIA BACKEND) ====================
@@ -226,33 +228,43 @@ class ApiClient {
     nonce: number,
     data?: any
   ): Promise<any> {
-    // Step 1: Sign
-    const signResult = await this.signTransaction({
+    // Build request, EXCLUDING 'to' if null (important for contract calls)
+    const signReq: SignTxRequest = {
       private_key: privateKey,
       tx_type: txType,
       from,
-      to,
       value,
       nonce,
       data,
-    })
+    }
+    // Only include 'to' if it's a real address (not null/undefined)
+    if (to) {
+      signReq.to = to
+    }
+
+    // Step 1: Sign
+    const signResult = await this.signTransaction(signReq)
 
     if (!signResult.success) {
       throw new Error(signResult.message || 'Failed to sign transaction')
     }
 
-    // Step 2: Submit
-    return this.submitTransaction({
+    // Step 2: Submit (also exclude 'to' if null)
+    const submitReq: SubmitTxRequest = {
       tx_type: txType,
       from,
-      to,
       value,
       nonce,
       timestamp: Math.floor(Date.now() / 1000),
       data,
       signature: signResult.signature,
       public_key: signResult.public_key,
-    })
+    }
+    if (to) {
+      submitReq.to = to
+    }
+    
+    return this.submitTransaction(submitReq)
   }
 
   // ==================== CONTRACT DEPLOYMENT ====================
@@ -327,11 +339,12 @@ class ApiClient {
       amount,
     }
 
+    // For call_contract, 'to' should be null - contract address is in data
     return this.signAndSubmit(
       privateKey,
       'call_contract',
       from,
-      contractAddress,
+      null,  // to is null for contract calls
       0,
       nonce,
       callData
