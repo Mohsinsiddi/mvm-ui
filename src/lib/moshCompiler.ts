@@ -43,6 +43,7 @@ export interface FunctionDef {
   args: { name: string; arg_type: string }[]
   body: Operation[]
   returns?: string
+  line?: number  // Line number where function is defined
 }
 
 export interface Operation {
@@ -57,6 +58,7 @@ export interface Operation {
   msg?: string
   to?: any
   amount?: any
+  line?: number  // Line number where operation is defined
 }
 
 // ==================== TOKENS ====================
@@ -420,6 +422,7 @@ class Parser {
   }
 
   private parseFunction(): FunctionDef {
+    const fnLine = this.peek().line  // Capture function line number
     this.consume(TokenType.FUNCTION, "Expected 'function'")
     const name = this.consume(TokenType.IDENTIFIER, "Expected function name").value
     
@@ -452,10 +455,12 @@ class Parser {
     }
     this.consume(TokenType.RBRACE, "Expected '}' after function body")
 
-    return { name, modifiers, args, body, returns }
+    return { name, modifiers, args, body, returns, line: fnLine }
   }
 
   private parseStatement(): Operation | null {
+    const stmtLine = this.peek().line  // Capture statement line number
+    
     if (this.match(TokenType.REQUIRE)) {
       this.consume(TokenType.LPAREN, "Expected '(' after require")
       const condition = this.parseExpression()
@@ -463,13 +468,13 @@ class Parser {
       if (this.match(TokenType.COMMA)) msg = this.consume(TokenType.STRING_LITERAL, "Expected error message").value
       this.consume(TokenType.RPAREN, "Expected ')' after require")
       this.consume(TokenType.SEMICOLON, "Expected ';' after require")
-      return { op: 'require', left: condition.left, cmp: condition.cmp, right: condition.right, msg }
+      return { op: 'require', left: condition.left, cmp: condition.cmp, right: condition.right, msg, line: stmtLine }
     }
 
     if (this.match(TokenType.RETURN)) {
       const value = this.parseValueExpr()
       this.consume(TokenType.SEMICOLON, "Expected ';' after return")
-      return { op: 'return', var: String(value) }
+      return { op: 'return', value: String(value), line: stmtLine }
     }
 
     if (this.peek().value === 'transfer' && this.check(TokenType.IDENTIFIER)) {
@@ -480,7 +485,7 @@ class Parser {
       const amount = this.parseValueExpr()
       this.consume(TokenType.RPAREN, "Expected ')' after transfer")
       this.consume(TokenType.SEMICOLON, "Expected ';' after transfer")
-      return { op: 'transfer', to, amount }
+      return { op: 'transfer', to, amount, line: stmtLine }
     }
 
     if (this.match(TokenType.EMIT)) {
@@ -492,13 +497,13 @@ class Parser {
       }
       this.consume(TokenType.RPAREN, "Expected ')' after event args")
       this.consume(TokenType.SEMICOLON, "Expected ';' after emit")
-      return { op: 'emit', var: eventName, value: eventArgs }
+      return { op: 'emit', var: eventName, value: eventArgs, line: stmtLine }
     }
 
-    return this.parseAssignmentTarget()
+    return this.parseAssignmentTarget(stmtLine)
   }
 
-  private parseAssignmentTarget(): Operation | null {
+  private parseAssignmentTarget(stmtLine: number): Operation | null {
     if (this.check(TokenType.IDENTIFIER)) {
       const name = this.advance().value
       
@@ -509,38 +514,38 @@ class Parser {
         if (this.match(TokenType.PLUS_EQ)) {
           const value = this.parseValueExpr()
           this.consume(TokenType.SEMICOLON, "Expected ';'")
-          return { op: 'add_map', map: name, key, value }
+          return { op: 'add_map', map: name, key, value, line: stmtLine }
         } else if (this.match(TokenType.MINUS_EQ)) {
           const value = this.parseValueExpr()
           this.consume(TokenType.SEMICOLON, "Expected ';'")
-          return { op: 'sub_map', map: name, key, value }
+          return { op: 'sub_map', map: name, key, value, line: stmtLine }
         } else if (this.match(TokenType.EQ)) {
           const value = this.parseValueExpr()
           this.consume(TokenType.SEMICOLON, "Expected ';'")
-          return { op: 'set_map', map: name, key, value }
+          return { op: 'set_map', map: name, key, value, line: stmtLine }
         }
       }
       
       if (this.match(TokenType.PLUS_EQ)) {
         const value = this.parseValueExpr()
         this.consume(TokenType.SEMICOLON, "Expected ';'")
-        return { op: 'add', var: name, value }
+        return { op: 'add', var: name, value, line: stmtLine }
       } else if (this.match(TokenType.MINUS_EQ)) {
         const value = this.parseValueExpr()
         this.consume(TokenType.SEMICOLON, "Expected ';'")
-        return { op: 'sub', var: name, value }
+        return { op: 'sub', var: name, value, line: stmtLine }
       } else if (this.match(TokenType.STAR_EQ)) {
         const value = this.parseValueExpr()
         this.consume(TokenType.SEMICOLON, "Expected ';'")
-        return { op: 'mul', var: name, value }
+        return { op: 'mul', var: name, value, line: stmtLine }
       } else if (this.match(TokenType.SLASH_EQ)) {
         const value = this.parseValueExpr()
         this.consume(TokenType.SEMICOLON, "Expected ';'")
-        return { op: 'div', var: name, value }
+        return { op: 'div', var: name, value, line: stmtLine }
       } else if (this.match(TokenType.EQ)) {
         const value = this.parseValueExpr()
         this.consume(TokenType.SEMICOLON, "Expected ';'")
-        return { op: 'set', var: name, value }
+        return { op: 'set', var: name, value, line: stmtLine }
       }
     }
     return null
@@ -631,6 +636,8 @@ export function compile(source: string): CompileResult {
 
     // Validate each function
     for (const fn of contract.functions) {
+      const fnLine = fn.line || 1
+      
       if (fn.modifiers.includes('View') && !fn.returns) {
         warnings.push(`View function '${fn.name}' has no return type`)
       }
@@ -640,13 +647,15 @@ export function compile(source: string): CompileResult {
 
       // Check all operations in function body
       for (const op of fn.body) {
+        const opLine = op.line || fnLine
+        
         // Check variable references in 'var' field
         if (op.var) {
           if (!declaredVars.has(op.var) && !argNames.has(op.var)) {
             errors.push({ 
-              line: 1, 
+              line: opLine, 
               column: 1, 
-              message: `Function '${fn.name}': undefined variable '${op.var}'` 
+              message: `Undefined variable '${op.var}'` 
             })
           }
         }
@@ -655,9 +664,9 @@ export function compile(source: string): CompileResult {
         if (op.map) {
           if (!declaredMappings.has(op.map)) {
             errors.push({ 
-              line: 1, 
+              line: opLine, 
               column: 1, 
-              message: `Function '${fn.name}': undefined mapping '${op.map}'` 
+              message: `Undefined mapping '${op.map}'` 
             })
           }
         }
@@ -678,9 +687,9 @@ export function compile(source: string): CompileResult {
             // Check if it looks like an identifier
             if (/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(val)) {
               errors.push({ 
-                line: 1, 
+                line: opLine, 
                 column: 1, 
-                message: `Function '${fn.name}': undefined variable '${val}'` 
+                message: `Undefined variable '${val}'` 
               })
             }
           }
@@ -698,9 +707,9 @@ export function compile(source: string): CompileResult {
               !val.includes('[') &&
               /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(val)) {
             errors.push({ 
-              line: 1, 
+              line: opLine, 
               column: 1, 
-              message: `Function '${fn.name}': undefined variable '${val}'` 
+              message: `Undefined variable '${val}'` 
             })
           }
         }
