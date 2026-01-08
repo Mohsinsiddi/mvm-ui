@@ -1,0 +1,103 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-deep;
+  }
+  
+  body {
+    @apply bg-void text-ghost font-sans antialiased;
+    background-image: 
+      radial-gradient(ellipse at top, rgba(123, 44, 191, 0.1) 0%, transparent 50%),
+      radial-gradient(ellipse at bottom, rgba(0, 240, 255, 0.05) 0%, transparent 50%);
+    min-height: 100vh;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-void;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-cyber rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-neon;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-abyss/80 backdrop-blur-sm border border-deep rounded-xl p-4 md:p-6 shadow-card;
+  }
+  
+  .card-hover {
+    @apply card transition-all duration-300 hover:border-cyber/50 hover:shadow-glow cursor-pointer;
+  }
+  
+  .btn {
+    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  
+  .btn-primary {
+    @apply btn bg-cyber hover:bg-neon text-white shadow-glow hover:shadow-glow-lg;
+  }
+  
+  .btn-secondary {
+    @apply btn bg-deep hover:bg-abyss text-ghost border border-cyber/30 hover:border-cyber;
+  }
+  
+  .btn-ghost {
+    @apply btn hover:bg-deep text-mist hover:text-ghost;
+  }
+  
+  .input {
+    @apply w-full px-4 py-3 bg-deep border border-deep rounded-lg text-ghost placeholder-shadow focus:outline-none focus:border-cyber focus:ring-1 focus:ring-cyber transition-all;
+  }
+  
+  .glow-text {
+    @apply text-transparent bg-clip-text bg-gradient-to-r from-cyber via-neon to-glow;
+    filter: drop-shadow(0 0 10px rgba(157, 78, 221, 0.5));
+  }
+  
+  .link {
+    @apply text-electric hover:text-ice transition-colors cursor-pointer;
+  }
+  
+  .badge {
+    @apply px-2 py-0.5 text-xs rounded-full font-medium;
+  }
+  
+  .badge-success {
+    @apply badge bg-success/20 text-success;
+  }
+  
+  .badge-warning {
+    @apply badge bg-warning/20 text-warning;
+  }
+  
+  .badge-error {
+    @apply badge bg-error/20 text-error;
+  }
+  
+  .badge-info {
+    @apply badge bg-electric/20 text-electric;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply text-transparent bg-clip-text bg-gradient-to-r from-cyber via-neon to-glow;
+  }
+  
+  .border-gradient {
+    border-image: linear-gradient(to right, #7B2CBF, #9D4EDD, #E040FB) 1;
+  }
+}

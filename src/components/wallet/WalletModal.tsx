@@ -1,0 +1,248 @@
+import { useState } from 'react'
+import * as Dialog from '@radix-ui/react-dialog'
+import { motion, AnimatePresence } from 'framer-motion'
+import { X, Plus, Download, Eye, EyeOff, AlertTriangle } from 'lucide-react'
+import { useWalletStore } from '@/store/walletStore'
+import { createWallet, isValidPrivateKey, getPublicKey, getAddress } from '@/lib/crypto'
+import { useCreateWallet } from '@/hooks/useApi'
+
+interface WalletModalProps {
+  open: boolean
+  onClose: () => void
+}
+
+// Normalized wallet type (always camelCase)
+interface NormalizedWallet {
+  address: string
+  privateKey: string
+  publicKey: string
+}
+
+export default function WalletModal({ open, onClose }: WalletModalProps) {
+  const [mode, setMode] = useState<'select' | 'create' | 'import'>('select')
+  const [privateKeyInput, setPrivateKeyInput] = useState('')
+  const [showKey, setShowKey] = useState(false)
+  const [error, setError] = useState('')
+  const [newWallet, setNewWallet] = useState<NormalizedWallet | null>(null)
+  
+  const { setWallet } = useWalletStore()
+  const createWalletMutation = useCreateWallet()
+
+  const handleCreateWallet = async () => {
+    try {
+      let wallet: NormalizedWallet
+      
+      try {
+        // API returns snake_case: { address, private_key, public_key }
+        const apiResult = await createWalletMutation.mutateAsync()
+        
+        // Normalize to camelCase
+        wallet = {
+          address: apiResult.address,
+          privateKey: apiResult.private_key,
+          publicKey: apiResult.public_key,
+        }
+      } catch {
+        // Local fallback already uses camelCase
+        wallet = createWallet()
+      }
+      
+      setNewWallet(wallet)
+      setMode('create')
+    } catch (err) {
+      setError('Failed to create wallet')
+    }
+  }
+
+  const handleConfirmCreate = () => {
+    if (newWallet) {
+      setWallet(newWallet)
+      handleClose()
+    }
+  }
+
+  const handleImport = () => {
+    setError('')
+    if (!isValidPrivateKey(privateKeyInput)) {
+      setError('Invalid private key. Must be 64 hex characters.')
+      return
+    }
+
+    try {
+      const publicKey = getPublicKey(privateKeyInput)
+      const address = getAddress(publicKey)
+      setWallet({ privateKey: privateKeyInput, publicKey, address })
+      handleClose()
+    } catch (err) {
+      setError('Failed to import wallet')
+    }
+  }
+
+  const handleClose = () => {
+    setMode('select')
+    setPrivateKeyInput('')
+    setShowKey(false)
+    setError('')
+    setNewWallet(null)
+    onClose()
+  }
+
+  return (
+    <Dialog.Root open={open} onOpenChange={handleClose}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 bg-void/80 backdrop-blur-sm z-50" />
+        <Dialog.Content className="fixed z-50 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="card border-cyber/30"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <Dialog.Title className="text-xl font-bold text-ghost">
+                {mode === 'select' && 'Connect Wallet'}
+                {mode === 'create' && 'New Wallet Created'}
+                {mode === 'import' && 'Import Wallet'}
+              </Dialog.Title>
+              <Dialog.Close asChild>
+                <button className="p-2 rounded-lg hover:bg-deep text-mist hover:text-ghost transition-colors">
+                  <X size={20} />
+                </button>
+              </Dialog.Close>
+            </div>
+
+            <AnimatePresence mode="wait">
+              {mode === 'select' && (
+                <motion.div
+                  key="select"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="space-y-4"
+                >
+                  <button
+                    onClick={handleCreateWallet}
+                    className="w-full p-4 rounded-lg border border-deep hover:border-cyber bg-deep/50 hover:bg-deep transition-all flex items-center gap-4"
+                  >
+                    <div className="p-3 rounded-lg bg-cyber/20">
+                      <Plus size={24} className="text-cyber" />
+                    </div>
+                    <div className="text-left">
+                      <div className="font-medium text-ghost">Create New Wallet</div>
+                      <div className="text-sm text-mist">Generate a new MVM wallet</div>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => setMode('import')}
+                    className="w-full p-4 rounded-lg border border-deep hover:border-neon bg-deep/50 hover:bg-deep transition-all flex items-center gap-4"
+                  >
+                    <div className="p-3 rounded-lg bg-neon/20">
+                      <Download size={24} className="text-neon" />
+                    </div>
+                    <div className="text-left">
+                      <div className="font-medium text-ghost">Import Wallet</div>
+                      <div className="text-sm text-mist">Import with private key</div>
+                    </div>
+                  </button>
+                </motion.div>
+              )}
+
+              {mode === 'create' && newWallet && (
+                <motion.div
+                  key="create"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="space-y-4"
+                >
+                  <div className="p-4 rounded-lg bg-warning/10 border border-warning/30 flex items-start gap-3">
+                    <AlertTriangle size={20} className="text-warning shrink-0 mt-0.5" />
+                    <div className="text-sm text-warning">
+                      <strong>Important!</strong> Save your private key securely. It cannot be recovered if lost!
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm text-mist mb-2">Address</label>
+                    <div className="p-3 rounded-lg bg-deep font-mono text-sm text-electric break-all">
+                      {newWallet.address}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm text-mist mb-2">Private Key</label>
+                    <div className="p-3 rounded-lg bg-deep font-mono text-sm break-all relative">
+                      <span className={showKey ? 'text-ghost' : 'blur-sm text-ghost select-none'}>
+                        {newWallet.privateKey}
+                      </span>
+                      <button
+                        onClick={() => setShowKey(!showKey)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-mist hover:text-ghost"
+                      >
+                        {showKey ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 pt-2">
+                    <button onClick={() => setMode('select')} className="btn-secondary flex-1">
+                      Back
+                    </button>
+                    <button onClick={handleConfirmCreate} className="btn-primary flex-1">
+                      I've Saved It
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+
+              {mode === 'import' && (
+                <motion.div
+                  key="import"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="space-y-4"
+                >
+                  <div>
+                    <label className="block text-sm text-mist mb-2">Private Key</label>
+                    <div className="relative">
+                      <input
+                        type={showKey ? 'text' : 'password'}
+                        value={privateKeyInput}
+                        onChange={(e) => setPrivateKeyInput(e.target.value)}
+                        placeholder="Enter your 64-character private key"
+                        className="input pr-12 font-mono"
+                      />
+                      <button
+                        onClick={() => setShowKey(!showKey)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-mist hover:text-ghost"
+                      >
+                        {showKey ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {error && (
+                    <div className="p-3 rounded-lg bg-error/10 border border-error/30 text-sm text-error">
+                      {error}
+                    </div>
+                  )}
+
+                  <div className="flex gap-3 pt-2">
+                    <button onClick={() => setMode('select')} className="btn-secondary flex-1">
+                      Back
+                    </button>
+                    <button onClick={handleImport} className="btn-primary flex-1">
+                      Import
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+  )
+}
