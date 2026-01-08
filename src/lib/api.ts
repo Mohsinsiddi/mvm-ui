@@ -153,7 +153,14 @@ class ApiClient {
     return this.fetch(`/contracts/creator/${address}`)
   }
 
-  async getContract(address: string): Promise<{ contract: Contract }> {
+  async getContract(address: string): Promise<{
+    success: boolean
+    contract: Contract
+    functions?: any[]
+    variables?: any[]
+    mappings?: any[]
+    auto_methods?: any
+  }> {
     return this.fetch(`/contract/${address}`)
   }
 

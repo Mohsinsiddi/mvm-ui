@@ -625,9 +625,85 @@ export function compile(source: string): CompileResult {
     if (!contract.name) errors.push({ line: 1, column: 1, message: 'Contract must have a name' })
     if (contract.functions.length === 0) warnings.push('Contract has no functions')
 
+    // Get all declared variable and mapping names
+    const declaredVars = new Set(contract.variables.map(v => v.name))
+    const declaredMappings = new Set(contract.mappings.map(m => m.name))
+
+    // Validate each function
     for (const fn of contract.functions) {
       if (fn.modifiers.includes('View') && !fn.returns) {
         warnings.push(`View function '${fn.name}' has no return type`)
+      }
+
+      // Get function argument names
+      const argNames = new Set(fn.args.map(a => a.name))
+
+      // Check all operations in function body
+      for (const op of fn.body) {
+        // Check variable references in 'var' field
+        if (op.var) {
+          if (!declaredVars.has(op.var) && !argNames.has(op.var)) {
+            errors.push({ 
+              line: 1, 
+              column: 1, 
+              message: `Function '${fn.name}': undefined variable '${op.var}'` 
+            })
+          }
+        }
+
+        // Check mapping references
+        if (op.map) {
+          if (!declaredMappings.has(op.map)) {
+            errors.push({ 
+              line: 1, 
+              column: 1, 
+              message: `Function '${fn.name}': undefined mapping '${op.map}'` 
+            })
+          }
+        }
+
+        // Check value references (could be variable names)
+        if (op.value !== undefined && op.value !== null) {
+          const val = typeof op.value === 'string' ? op.value : String(op.value)
+          // Skip special values and literals
+          if (!val.startsWith('msg.') && 
+              !val.startsWith('block.') && 
+              !val.startsWith('contract.') &&
+              !declaredVars.has(val) && 
+              !declaredMappings.has(val) &&
+              !argNames.has(val) &&
+              isNaN(Number(val)) &&
+              val !== 'true' && val !== 'false' &&
+              !val.includes('[')) {
+            // Check if it looks like an identifier
+            if (/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(val)) {
+              errors.push({ 
+                line: 1, 
+                column: 1, 
+                message: `Function '${fn.name}': undefined variable '${val}'` 
+              })
+            }
+          }
+        }
+
+        // Check 'left' operand in require statements
+        if (op.left !== undefined && op.left !== null) {
+          const val = typeof op.left === 'string' ? op.left : String(op.left)
+          if (!val.startsWith('msg.') && 
+              !val.startsWith('block.') && 
+              !declaredVars.has(val) && 
+              !declaredMappings.has(val) &&
+              !argNames.has(val) &&
+              isNaN(Number(val)) &&
+              !val.includes('[') &&
+              /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(val)) {
+            errors.push({ 
+              line: 1, 
+              column: 1, 
+              message: `Function '${fn.name}': undefined variable '${val}'` 
+            })
+          }
+        }
       }
     }
 
