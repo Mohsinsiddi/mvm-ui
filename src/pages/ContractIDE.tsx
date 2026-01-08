@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import * as Tabs from '@radix-ui/react-tabs'
@@ -1124,6 +1124,29 @@ function DeployContract({
   const [deployResult, setDeployResult] = useState<{ success: boolean; address?: string; error?: string } | null>(null)
   const [showSamples, setShowSamples] = useState(false)
   const [logs, setLogs] = useState<string[]>([])
+  
+  // Editor state
+  const [isEditing, setIsEditing] = useState(false)
+  const [cursorLine, setCursorLine] = useState(1)
+  const [cursorCol, setCursorCol] = useState(1)
+  const lineNumbersRef = useRef<HTMLDivElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  // Sync scroll between line numbers and textarea
+  const handleScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
+    if (lineNumbersRef.current) {
+      lineNumbersRef.current.scrollTop = e.currentTarget.scrollTop
+    }
+  }
+
+  // Track cursor position
+  const handleCursorChange = (e: React.SyntheticEvent<HTMLTextAreaElement>) => {
+    const textarea = e.currentTarget
+    const text = textarea.value.substring(0, textarea.selectionStart)
+    const lines = text.split('\n')
+    setCursorLine(lines.length)
+    setCursorCol(lines[lines.length - 1].length + 1)
+  }
 
   const addLog = (msg: string) => {
     const time = new Date().toLocaleTimeString()
@@ -1185,11 +1208,23 @@ function DeployContract({
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       {/* Editor */}
-      <Card className="p-0 overflow-hidden">
-        <div className="flex items-center justify-between p-3 border-b border-deep">
-          <div className="flex items-center gap-2">
-            <Code size={16} className="text-cyber" />
+      <Card className={`p-0 overflow-hidden transition-all duration-300 ${
+        isEditing ? 'ring-2 ring-cyber/50 shadow-lg shadow-cyber/10' : ''
+      }`}>
+        {/* Editor Header */}
+        <div className={`flex items-center justify-between p-3 border-b transition-colors ${
+          isEditing ? 'border-cyber/30 bg-cyber/5' : 'border-deep'
+        }`}>
+          <div className="flex items-center gap-3">
+            <div className={`p-1.5 rounded transition-colors ${isEditing ? 'bg-cyber/20' : 'bg-deep'}`}>
+              <Code size={16} className={isEditing ? 'text-cyber' : 'text-mist'} />
+            </div>
             <span className="font-medium text-ghost">Mosh Editor</span>
+            {isEditing && (
+              <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-cyber/20 text-cyber animate-pulse">
+                ● EDITING
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2">
             {/* Compile Button */}
@@ -1248,13 +1283,70 @@ function DeployContract({
             </div>
           </div>
         </div>
-        <textarea
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
-          className="w-full h-[500px] p-4 bg-void font-mono text-sm text-ghost resize-none focus:outline-none"
-          spellCheck={false}
-          placeholder="// Write your Mosh contract here..."
-        />
+
+        {/* Editor with Line Numbers */}
+        <div className={`flex h-[460px] overflow-hidden transition-colors ${
+          isEditing ? 'bg-[#0d1117]' : 'bg-void'
+        }`}>
+          {/* Line Numbers */}
+          <div 
+            ref={lineNumbersRef}
+            className={`flex-shrink-0 w-12 border-r text-right select-none overflow-hidden transition-colors ${
+              isEditing ? 'bg-[#161b22] border-cyber/20' : 'bg-abyss border-deep'
+            }`}
+          >
+            <div className="py-4 pr-3 font-mono text-sm leading-[1.5]">
+              {code.split('\n').map((_, i) => (
+                <div 
+                  key={i} 
+                  className={`h-[1.5em] transition-colors ${
+                    cursorLine === i + 1 && isEditing
+                      ? 'text-cyber font-bold' 
+                      : 'text-mist/50'
+                  }`}
+                >
+                  {i + 1}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Code Area */}
+          <textarea
+            ref={textareaRef}
+            value={code}
+            onChange={(e) => {
+              setCode(e.target.value)
+              handleCursorChange(e)
+            }}
+            onFocus={() => setIsEditing(true)}
+            onBlur={() => setIsEditing(false)}
+            onScroll={handleScroll}
+            onKeyUp={handleCursorChange}
+            onClick={handleCursorChange}
+            className={`flex-1 py-4 px-4 font-mono text-sm resize-none focus:outline-none leading-[1.5] transition-colors ${
+              isEditing ? 'bg-[#0d1117] text-[#c9d1d9]' : 'bg-void text-ghost'
+            }`}
+            spellCheck={false}
+            placeholder="// Write your Mosh contract here..."
+            style={{ lineHeight: '1.5' }}
+          />
+        </div>
+
+        {/* Status Bar */}
+        <div className={`flex items-center justify-between px-3 py-1.5 text-xs border-t transition-colors ${
+          isEditing ? 'bg-[#161b22] border-cyber/20 text-cyber' : 'bg-abyss border-deep text-mist'
+        }`}>
+          <div className="flex items-center gap-4">
+            <span>Ln {cursorLine}, Col {cursorCol}</span>
+            <span>{code.split('\n').length} lines</span>
+            <span>{code.length} chars</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="px-1.5 py-0.5 rounded bg-deep/50">Mosh</span>
+            <span className="px-1.5 py-0.5 rounded bg-deep/50">UTF-8</span>
+          </div>
+        </div>
       </Card>
 
       {/* Right Panel */}
