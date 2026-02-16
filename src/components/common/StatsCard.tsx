@@ -15,8 +15,8 @@ export default function StatsCard({
   value, 
   subtitle, 
   icon: Icon,
-  trend,
-  color = 'cyber' 
+  trend: _trend,
+  color = 'cyber'
 }: StatsCardProps) {
   const colors = {
     cyber: 'from-cyber to-neon',

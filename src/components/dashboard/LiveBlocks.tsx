@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion'
 import BlockCard from '@/components/explorer/BlockCard'
 import type { Block } from '@/types'
 

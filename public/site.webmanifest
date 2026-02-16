@@ -1,0 +1,27 @@
+{
+  "name": "Mohsin Explorer",
+  "short_name": "Mohsin",
+  "description": "Explore the Mohsin Virtual Machine blockchain",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0A0118",
+  "theme_color": "#7B2CBF",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-384.png",
+      "sizes": "384x384",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

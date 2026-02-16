@@ -244,7 +244,7 @@ export default function Terminal() {
         {/* Output Area */}
         <div 
           ref={outputRef}
-          className="h-[400px] overflow-y-auto space-y-4 mb-4"
+          className="h-[300px] md:h-[400px] overflow-y-auto space-y-4 mb-4"
         >
           {/* Welcome Message */}
           <div className="text-mist">

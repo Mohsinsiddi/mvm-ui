@@ -5,14 +5,13 @@ import {
   Clock, 
   Hash, 
   ArrowLeft, 
-  ArrowRight,
   User,
   Layers,
   ChevronLeft,
   ChevronRight
 } from 'lucide-react'
 import { useBlock } from '@/hooks/useApi'
-import { formatTime, formatTimeAgo, formatHash, formatAddress } from '@/lib/format'
+import { formatTime, formatTimeAgo, formatHash } from '@/lib/format'
 import TxCard from '@/components/explorer/TxCard'
 import LoadingSpinner from '@/components/common/LoadingSpinner'
 import CopyButton from '@/components/common/CopyButton'

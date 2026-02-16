@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { AlertTriangle, Wifi, WifiOff, RefreshCw } from 'lucide-react'
+import { AlertTriangle, WifiOff, RefreshCw } from 'lucide-react'
 import { useStatus } from '@/hooks/useApi'
 import { useWebSocket } from '@/hooks/useWebSocket'
 

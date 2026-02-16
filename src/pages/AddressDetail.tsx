@@ -11,8 +11,6 @@ import {
   Copy,
   Check,
   ExternalLink,
-  ArrowUpRight,
-  ArrowDownLeft,
   Droplets
 } from 'lucide-react'
 import { useAccount, useAddressTransactions, useTokens, useFaucet } from '@/hooks/useApi'
@@ -22,7 +20,6 @@ import { isValidAddress } from '@/lib/crypto'
 import TxCard from '@/components/explorer/TxCard'
 import LoadingSpinner from '@/components/common/LoadingSpinner'
 import Card from '@/components/common/Card'
-import { TX_TYPES } from '@/lib/constants'
 
 export default function AddressDetail() {
   const { address } = useParams<{ address: string }>()
@@ -332,14 +329,14 @@ function InfoItem({ label, value, link }: { label: string; value: string; link?:
   )
 }
 
-function TransactionsList({ 
-  transactions, 
-  address,
-  loading 
-}: { 
+function TransactionsList({
+  transactions,
+  address: _address,
+  loading
+}: {
   transactions: any[]
   address: string
-  loading: boolean 
+  loading: boolean
 }) {
   if (loading) {
     return (
@@ -535,7 +532,37 @@ function TokenTransfersList({ transactions, tokenAddress, decimals, symbol }: { 
 
   return (
     <Card>
-      <div className="overflow-x-auto">
+      {/* Mobile: card layout */}
+      <div className="space-y-3 md:hidden">
+        {tokenTxs.map((tx: any) => {
+          const data = tx.data || {}
+          const transferTo = data.TransferToken?.to || data.to || '—'
+          const amount = data.TransferToken?.amount || data.amount || 0
+          const isCreate = tx.tx_type?.includes('create')
+          return (
+            <div key={tx.hash} className="p-3 rounded-lg bg-deep/30 border border-deep space-y-2">
+              <div className="flex items-center justify-between">
+                <Link to={`/tx/${tx.hash}`} className="text-electric hover:text-cyber font-mono text-xs">
+                  {formatAddress(tx.hash, 10)}
+                </Link>
+                <span className={`px-2 py-0.5 rounded-full text-xs ${isCreate ? 'bg-success/20 text-success' : 'bg-neon/20 text-neon'}`}>
+                  {isCreate ? 'Create' : 'Transfer'}
+                </span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-mist">From: <Link to={`/address/${tx.from}`} className="text-ghost font-mono">{formatAddress(tx.from, 6)}</Link></span>
+                {transferTo !== '—' && <span className="text-mist">To: <Link to={`/address/${transferTo}`} className="text-ghost font-mono">{formatAddress(transferTo, 6)}</Link></span>}
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="font-mono text-ghost">{amount > 0 ? `${formatBalance(amount, decimals)} ${symbol}` : '—'}</span>
+                <span className="text-mist">{formatTimeAgo(tx.timestamp)}</span>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      {/* Desktop: table layout */}
+      <div className="overflow-x-auto hidden md:block">
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-mist border-b border-deep">

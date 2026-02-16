@@ -10,8 +10,7 @@ import { useBlocks, useTransactions, useTokens, useContracts } from '@/hooks/use
 
 export default function Explorer() {
   const [searchParams] = useSearchParams()
-  const query = searchParams.get('q') || ''
-  const [activeTab, setActiveTab] = useState('blocks')
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'blocks')
   
   const { data: blocksData, isLoading: blocksLoading } = useBlocks(20)
   const { data: txsData, isLoading: txsLoading } = useTransactions(50)

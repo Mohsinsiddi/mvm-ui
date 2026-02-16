@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react'
+import { useRef } from 'react'
 import Editor, { OnMount, BeforeMount } from '@monaco-editor/react'
 import type { editor } from 'monaco-editor'
 
@@ -141,7 +141,7 @@ const handleBeforeMount: BeforeMount = (monaco) => {
 
   // Autocomplete provider
   monaco.languages.registerCompletionItemProvider('mosh', {
-    provideCompletionItems: (model, position) => {
+    provideCompletionItems: (model: any, position: any) => {
       const word = model.getWordUntilPosition(position)
       const range = {
         startLineNumber: position.lineNumber,

@@ -1,12 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import * as Tabs from '@radix-ui/react-tabs'
 import {
   FileCode, Play, Upload, Eye, Code, CheckCircle, XCircle, Loader,
   RefreshCw, ChevronDown, ChevronRight, Terminal, Zap, AlertTriangle,
-  Copy, Check, ExternalLink, Send, BookOpen, Clock, Hash, User,
-  Database, Map, Activity, ArrowUpRight, ArrowDownLeft, Box, Coins, Droplets
+  Copy, Check, ExternalLink, Send, BookOpen, Clock, User,
+  Database, Map, Activity, Box, Coins, Droplets
 } from 'lucide-react'
 import { api } from '@/lib/api'
 import { useWalletStore } from '@/store/walletStore'
@@ -805,7 +805,39 @@ function TokenDetail({ token, walletAddress, privateKey, isConnected, onConnectW
         ) : tokenTxs.length === 0 ? (
           <div className="text-center py-8 text-mist">No transactions yet</div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          {/* Mobile: card layout */}
+          <div className="space-y-3 md:hidden">
+            {tokenTxs.map((tx: any) => {
+              const data = tx.data || {}
+              const transferToAddr = data.TransferToken?.to || data.to || null
+              const amount = data.TransferToken?.amount || data.amount || 0
+              const txType = tx.tx_type || ''
+              const isCreate = txType.toLowerCase().includes('create')
+              return (
+                <div key={tx.hash} className="p-3 rounded-lg bg-deep/30 border border-deep space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Link to={`/tx/${tx.hash}`} className="text-electric hover:text-cyber font-mono text-xs">
+                      {formatAddress(tx.hash, 10)}
+                    </Link>
+                    <span className={`px-2 py-0.5 rounded-full text-xs ${isCreate ? 'bg-success/20 text-success' : 'bg-neon/20 text-neon'}`}>
+                      {isCreate ? 'Create' : 'Transfer'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-mist">From: <Link to={`/address/${tx.from}`} className="text-ghost font-mono">{formatAddress(tx.from, 6)}</Link></span>
+                    {transferToAddr && <span className="text-mist">To: <Link to={`/address/${transferToAddr}`} className="text-ghost font-mono">{formatAddress(transferToAddr, 6)}</Link></span>}
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="font-mono text-ghost">{amount > 0 ? `${formatBalance(amount, token.decimals)} ${token.symbol}` : '—'}</span>
+                    <span className="text-mist">{formatTimeAgo(tx.timestamp)}</span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          {/* Desktop: table layout */}
+          <div className="overflow-x-auto hidden md:block">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-mist border-b border-deep">
@@ -864,6 +896,7 @@ function TokenDetail({ token, walletAddress, privateKey, isConnected, onConnectW
               </tbody>
             </table>
           </div>
+          </>
         )}
       </Card>
 
@@ -914,7 +947,7 @@ function TokenDetail({ token, walletAddress, privateKey, isConnected, onConnectW
 // CONTRACT OVERVIEW
 // ============================================================
 
-function ContractOverview({ contract, mbi, transactions }: { contract: any; mbi: any; transactions: any[] }) {
+function ContractOverview({ contract, mbi: _mbi, transactions }: { contract: any; mbi: any; transactions: any[] }) {
   return (
     <div className="grid gap-4 md:grid-cols-2">
       {/* Quick Stats */}
@@ -1538,7 +1571,7 @@ function FunctionCard({
 // CONTRACT TRANSACTIONS
 // ============================================================
 
-function ContractTransactions({ transactions, contractAddress }: { transactions: any[]; contractAddress: string }) {
+function ContractTransactions({ transactions, contractAddress: _contractAddress }: { transactions: any[]; contractAddress: string }) {
   if (transactions.length === 0) {
     return (
       <Card className="text-center py-12">
@@ -1630,28 +1663,9 @@ function DeployContract({
   const [logs, setLogs] = useState<string[]>([])
   
   // Editor state
-  const [isEditing, setIsEditing] = useState(false)
+  const isEditing = false
   const [cursorLine, setCursorLine] = useState(1)
   const [cursorCol, setCursorCol] = useState(1)
-  const lineNumbersRef = useRef<HTMLDivElement>(null)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
-
-  // Sync scroll between line numbers and textarea
-  const handleScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
-    if (lineNumbersRef.current) {
-      lineNumbersRef.current.scrollTop = e.currentTarget.scrollTop
-    }
-  }
-
-  // Track cursor position
-  const handleCursorChange = (e: React.SyntheticEvent<HTMLTextAreaElement>) => {
-    const textarea = e.currentTarget
-    const text = textarea.value.substring(0, textarea.selectionStart)
-    const lines = text.split('\n')
-    setCursorLine(lines.length)
-    setCursorCol(lines[lines.length - 1].length + 1)
-  }
-
   const addLog = (msg: string) => {
     const time = new Date().toLocaleTimeString()
     setLogs(prev => [...prev.slice(-20), `[${time}] ${msg}`])
@@ -1798,7 +1812,7 @@ function DeployContract({
         </div>
 
         {/* Monaco Editor */}
-        <div className="h-[460px] md:h-[460px] max-md:h-[300px]">
+        <div className="h-[300px] md:h-[460px]">
           <MoshEditor
             value={code}
             onChange={(val) => setCode(val)}
