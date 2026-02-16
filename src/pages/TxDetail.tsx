@@ -16,7 +16,7 @@ import {
   Coins
 } from 'lucide-react'
 import { useTransaction } from '@/hooks/useApi'
-import { formatTime, formatTimeAgo, formatBalance, formatAddress } from '@/lib/format'
+import { formatTime, formatTimeAgo, formatBalance, formatAddress, normalizeTxType } from '@/lib/format'
 import { TX_TYPES } from '@/lib/constants'
 import LoadingSpinner from '@/components/common/LoadingSpinner'
 import CopyButton from '@/components/common/CopyButton'
@@ -49,7 +49,7 @@ export default function TxDetail() {
     )
   }
 
-  const txType = TX_TYPES[tx.tx_type] || { label: tx.tx_type, icon: '📄', color: 'text-mist' }
+  const txType = (TX_TYPES as Record<string, any>)[normalizeTxType(tx.tx_type as string)] || { label: tx.tx_type, icon: '📄', color: 'text-mist' }
   
   const statusConfig = {
     Pending: { icon: ClockIcon, color: 'text-warning', bg: 'bg-warning/20', label: 'Pending' },
@@ -109,9 +109,9 @@ export default function TxDetail() {
               <div className="p-3 rounded-full bg-cyber/20">
                 <ArrowRight size={24} className="text-cyber" />
               </div>
-              {tx.value > 0 && (
+              {Number(tx.value_raw ?? tx.value) > 0 && (
                 <div className="mt-2 px-4 py-1 rounded-full bg-success/20 text-success font-mono text-sm">
-                  {formatBalance(tx.value)} MVM
+                  {tx.value_raw != null ? formatBalance(tx.value_raw) : tx.value} MVM
                 </div>
               )}
             </div>
@@ -158,14 +158,22 @@ export default function TxDetail() {
             copyable={!!tx.to}
             link={tx.to ? `/address/${tx.to}` : undefined}
           />
-          <InfoRow 
-            icon={Coins} 
-            label="Value" 
-            value={`${formatBalance(tx.value)} MVM`}
+          <InfoRow
+            icon={Coins}
+            label="Value"
+            value={`${tx.value_raw != null ? formatBalance(tx.value_raw) : tx.value} MVM`}
           />
-          <InfoRow 
-            icon={Hash} 
-            label="Nonce" 
+          {tx.block_height != null && (
+            <InfoRow
+              icon={Box}
+              label="Block"
+              value={`#${tx.block_height}`}
+              link={`/block/${tx.block_height}`}
+            />
+          )}
+          <InfoRow
+            icon={Hash}
+            label="Nonce"
             value={tx.nonce}
           />
           {tx.gas_used !== undefined && (

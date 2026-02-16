@@ -99,8 +99,11 @@ class ApiClient {
 
   // ==================== ACCOUNTS ====================
 
-  async getBalance(address: string): Promise<{ balance: number }> {
-    return this.fetch(`/balance/${address}`)
+  async getBalance(address: string): Promise<{ balance: number; balance_raw: number }> {
+    const res = await this.fetch<any>(`/balance/${address}`)
+    // API returns balance as formatted string and balance_raw as number
+    // Normalize: always return balance_raw as the numeric balance
+    return { ...res, balance: res.balance_raw ?? parseFloat(res.balance) ?? 0, balance_raw: res.balance_raw ?? 0 }
   }
 
   async getNonce(address: string): Promise<{ nonce: number }> {
@@ -139,8 +142,17 @@ class ApiClient {
     return this.fetch(`/token/${address}`)
   }
 
-  async getTokenBalance(token: string, address: string): Promise<{ balance: number }> {
-    return this.fetch(`/token/${token}/balance/${address}`)
+  async getTokenHolders(token: string): Promise<{ holder_count: number; holders: { address: string; balance: string; balance_raw: number }[] }> {
+    return this.fetch(`/token/${token}/holders`)
+  }
+
+  async getTokensByCreator(creator: string): Promise<{ tokens: Token[] }> {
+    return this.fetch(`/tokens/creator/${creator}`)
+  }
+
+  async getTokenBalance(token: string, address: string): Promise<{ balance: number; balance_raw: number }> {
+    const res = await this.fetch<any>(`/token/${token}/balance/${address}`)
+    return { balance: res.balance_raw ?? 0, balance_raw: res.balance_raw ?? 0 }
   }
 
   // ==================== CONTRACTS ====================
@@ -328,6 +340,18 @@ class ApiClient {
   /**
    * Call a contract method (write operation)
    */
+  // ==================== EVENTS ====================
+
+  async getContractEvents(address: string): Promise<{ events: any[] }> {
+    return this.fetch(`/contract/${address}/events`)
+  }
+
+  // ==================== LEADERBOARD ====================
+
+  async getLeaderboard(): Promise<any> {
+    return this.fetch('/leaderboard')
+  }
+
   async callContract(
     privateKey: string,
     from: string,

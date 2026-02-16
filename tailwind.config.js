@@ -1,4 +1,17 @@
-/** @type {import('tailwindcss').Config} */
+/**
+ * MVM Explorer — Design Tokens
+ * ─────────────────────────────
+ * Backgrounds:  void (#0D0221)  → abyss (#150734)  → deep (#1A0A45)
+ * Primary:      cyber (#7B2CBF) → neon (#9D4EDD)   → glow (#E040FB)
+ * Accent:       electric (#00F0FF) → ice (#00D4E4)
+ * Text:         ghost (#E0E0FF) → mist (#9090B0)   → shadow (#505070)
+ * Semantic:     success (#00FF88) · warning (#FFB800) · error (#FF3366)
+ *
+ * Usage: always reference these tokens (e.g. `text-ghost`, `bg-void`).
+ * Never use raw hex values in components.
+ *
+ * @type {import('tailwindcss').Config}
+ */
 export default {
   content: [
     "./index.html",

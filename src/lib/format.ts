@@ -10,7 +10,7 @@ export function formatHash(hash: string, chars = 8): string {
   return `${hash.slice(0, chars)}...${hash.slice(-chars)}`
 }
 
-export function formatBalance(balance: number, decimals = 18): string {
+export function formatBalance(balance: number, decimals = 8): string {
   const value = balance / Math.pow(10, decimals)
   if (value === 0) return '0'
   if (value < 0.0001) return '< 0.0001'
@@ -46,4 +46,11 @@ export function copyToClipboard(text: string): Promise<void> {
 
 export function cn(...classes: (string | undefined | null | false)[]): string {
   return classes.filter(Boolean).join(' ')
+}
+
+/** Normalize tx_type: handles PascalCase ("CallContract") and snake_case ("call_contract") */
+export function normalizeTxType(raw: string): string {
+  if (!raw) return 'transfer'
+  if (raw.includes('_')) return raw.toLowerCase()
+  return raw.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase()
 }

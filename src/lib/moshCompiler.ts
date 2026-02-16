@@ -1,6 +1,8 @@
 // ============================================================
-// MOSH LANGUAGE COMPILER v2
+// MOSH LANGUAGE COMPILER v3
 // Compiles Mosh language → JSON for MVM
+// Supports unique Mosh syntax (forge, fn, let, map, guard, signal, vault, seal)
+// + backwards-compatible with Solidity-style keywords
 // ============================================================
 
 // ==================== TYPES ====================
@@ -43,7 +45,7 @@ export interface FunctionDef {
   args: { name: string; arg_type: string }[]
   body: Operation[]
   returns?: string
-  line?: number  // Line number where function is defined
+  line?: number
 }
 
 export interface Operation {
@@ -58,25 +60,34 @@ export interface Operation {
   msg?: string
   to?: any
   amount?: any
-  line?: number  // Line number where operation is defined
+  condition?: { left: any; cmp: string; right: any }
+  then_body?: Operation[]
+  else_body?: Operation[]
+  event_name?: string
+  event_args?: any[]
+  line?: number
 }
 
 // ==================== TOKENS ====================
 
 enum TokenType {
-  CONTRACT = 'CONTRACT',
-  FUNCTION = 'FUNCTION',
-  MAPPING = 'MAPPING',
-  RETURNS = 'RETURNS',
+  // Contract definition
+  CONTRACT = 'CONTRACT',       // contract / forge
+  FUNCTION = 'FUNCTION',       // function / fn
+  MAPPING = 'MAPPING',         // mapping / map
+  LET = 'LET',                 // let (Mosh variable decl)
+  RETURNS = 'RETURNS',         // returns
   RETURN = 'RETURN',
-  REQUIRE = 'REQUIRE',
+  REQUIRE = 'REQUIRE',         // require / guard
   IF = 'IF',
   ELSE = 'ELSE',
-  EMIT = 'EMIT',
-  VIEW = 'VIEW',
-  WRITE = 'WRITE',
-  PAYABLE = 'PAYABLE',
-  ONLY_OWNER = 'ONLY_OWNER',
+  EMIT = 'EMIT',               // emit / signal
+  // Modifiers
+  VIEW = 'VIEW',               // view / pub
+  WRITE = 'WRITE',             // write / mut
+  PAYABLE = 'PAYABLE',         // payable / vault
+  ONLY_OWNER = 'ONLY_OWNER',   // onlyOwner / seal
+  // Types
   UINT256 = 'UINT256',
   UINT128 = 'UINT128',
   UINT64 = 'UINT64',
@@ -85,15 +96,21 @@ enum TokenType {
   STRING = 'STRING',
   ADDRESS = 'ADDRESS',
   BOOL = 'BOOL',
+  // Literals
   NUMBER = 'NUMBER',
   STRING_LITERAL = 'STRING_LITERAL',
   TRUE = 'TRUE',
   FALSE = 'FALSE',
   IDENTIFIER = 'IDENTIFIER',
+  // Special values
   MSG_SENDER = 'MSG_SENDER',
   MSG_VALUE = 'MSG_VALUE',
   BLOCK_HEIGHT = 'BLOCK_HEIGHT',
   BLOCK_TIMESTAMP = 'BLOCK_TIMESTAMP',
+  MOSH_BALANCE = 'MOSH_BALANCE',
+  MOSH_HEIGHT = 'MOSH_HEIGHT',
+  MOSH_TIME = 'MOSH_TIME',
+  // Operators
   PLUS = 'PLUS',
   MINUS = 'MINUS',
   STAR = 'STAR',
@@ -103,6 +120,7 @@ enum TokenType {
   MINUS_EQ = 'MINUS_EQ',
   STAR_EQ = 'STAR_EQ',
   SLASH_EQ = 'SLASH_EQ',
+  PERCENT_EQ = 'PERCENT_EQ',
   EQ = 'EQ',
   EQ_EQ = 'EQ_EQ',
   BANG_EQ = 'BANG_EQ',
@@ -113,7 +131,9 @@ enum TokenType {
   AND_AND = 'AND_AND',
   OR_OR = 'OR_OR',
   BANG = 'BANG',
-  ARROW = 'ARROW',
+  ARROW = 'ARROW',             // => (mapping)
+  THIN_ARROW = 'THIN_ARROW',   // -> (return type)
+  // Delimiters
   LPAREN = 'LPAREN',
   RPAREN = 'RPAREN',
   LBRACE = 'LBRACE',
@@ -137,6 +157,7 @@ interface Token {
 // ==================== LEXER ====================
 
 const KEYWORDS: Record<string, TokenType> = {
+  // Standard keywords
   'contract': TokenType.CONTRACT,
   'function': TokenType.FUNCTION,
   'mapping': TokenType.MAPPING,
@@ -150,6 +171,18 @@ const KEYWORDS: Record<string, TokenType> = {
   'write': TokenType.WRITE,
   'payable': TokenType.PAYABLE,
   'onlyOwner': TokenType.ONLY_OWNER,
+  // Mosh unique keywords
+  'forge': TokenType.CONTRACT,
+  'fn': TokenType.FUNCTION,
+  'map': TokenType.MAPPING,
+  'let': TokenType.LET,
+  'guard': TokenType.REQUIRE,
+  'signal': TokenType.EMIT,
+  'pub': TokenType.VIEW,
+  'mut': TokenType.WRITE,
+  'vault': TokenType.PAYABLE,
+  'seal': TokenType.ONLY_OWNER,
+  // Types (standard)
   'uint256': TokenType.UINT256,
   'uint128': TokenType.UINT128,
   'uint64': TokenType.UINT64,
@@ -158,6 +191,14 @@ const KEYWORDS: Record<string, TokenType> = {
   'string': TokenType.STRING,
   'address': TokenType.ADDRESS,
   'bool': TokenType.BOOL,
+  // Mosh short type aliases
+  'u256': TokenType.UINT256,
+  'u128': TokenType.UINT128,
+  'u64': TokenType.UINT64,
+  'u32': TokenType.UINT64,
+  'u16': TokenType.UINT64,
+  'u8': TokenType.UINT8,
+  // Literals
   'true': TokenType.TRUE,
   'false': TokenType.FALSE,
 }
@@ -202,14 +243,18 @@ class Lexer {
         else { this.addToken(TokenType.PLUS, '+') }
         break
       case '-':
-        if (this.match('=')) { this.addToken(TokenType.MINUS_EQ, '-=') }
+        if (this.match('>')) { this.addToken(TokenType.THIN_ARROW, '->') }
+        else if (this.match('=')) { this.addToken(TokenType.MINUS_EQ, '-=') }
         else { this.addToken(TokenType.MINUS, '-') }
         break
       case '*':
         if (this.match('=')) { this.addToken(TokenType.STAR_EQ, '*=') }
         else { this.addToken(TokenType.STAR, '*') }
         break
-      case '%': this.addToken(TokenType.PERCENT, c); break
+      case '%':
+        if (this.match('=')) { this.addToken(TokenType.PERCENT_EQ, '%=') }
+        else { this.addToken(TokenType.PERCENT, '%') }
+        break
       case '=':
         if (this.match('=')) { this.addToken(TokenType.EQ_EQ, '==') }
         else if (this.match('>')) { this.addToken(TokenType.ARROW, '=>') }
@@ -306,23 +351,24 @@ class Lexer {
   private identifier(first: string) {
     let value = first
     while (this.isAlphaNumeric(this.peek())) value += this.advance()
-    
-    // Check for msg.sender, msg.value
-    if (value === 'msg' && this.peek() === '.') {
-      this.advance()
+
+    // Check for dotted special values: msg.sender, msg.value, block.height, block.timestamp, mosh.balance, mosh.height, mosh.time
+    if ((value === 'msg' || value === 'block' || value === 'mosh') && this.peek() === '.') {
+      this.advance() // consume '.'
       let prop = ''
       while (this.isAlphaNumeric(this.peek())) prop += this.advance()
-      if (prop === 'sender') { this.addToken(TokenType.MSG_SENDER, 'msg.sender'); return }
-      if (prop === 'value') { this.addToken(TokenType.MSG_VALUE, 'msg.value'); return }
-    }
-    
-    // Check for block.height, block.timestamp
-    if (value === 'block' && this.peek() === '.') {
-      this.advance()
-      let prop = ''
-      while (this.isAlphaNumeric(this.peek())) prop += this.advance()
-      if (prop === 'height') { this.addToken(TokenType.BLOCK_HEIGHT, 'block.height'); return }
-      if (prop === 'timestamp') { this.addToken(TokenType.BLOCK_TIMESTAMP, 'block.timestamp'); return }
+
+      if (value === 'msg') {
+        if (prop === 'sender') { this.addToken(TokenType.MSG_SENDER, 'msg.sender'); return }
+        if (prop === 'value') { this.addToken(TokenType.MSG_VALUE, 'msg.value'); return }
+      } else if (value === 'block') {
+        if (prop === 'height') { this.addToken(TokenType.BLOCK_HEIGHT, 'block.height'); return }
+        if (prop === 'timestamp') { this.addToken(TokenType.BLOCK_TIMESTAMP, 'block.timestamp'); return }
+      } else if (value === 'mosh') {
+        if (prop === 'balance') { this.addToken(TokenType.MOSH_BALANCE, 'mosh.balance'); return }
+        if (prop === 'height') { this.addToken(TokenType.MOSH_HEIGHT, 'mosh.height'); return }
+        if (prop === 'time') { this.addToken(TokenType.MOSH_TIME, 'mosh.time'); return }
+      }
     }
 
     const type = KEYWORDS[value] || TokenType.IDENTIFIER
@@ -366,7 +412,8 @@ class Parser {
   }
 
   private parseContract(): MoshContractJSON {
-    this.consume(TokenType.CONTRACT, "Expected 'contract' keyword")
+    // Accept both 'contract' and 'forge'
+    this.consume(TokenType.CONTRACT, "Expected 'forge' or 'contract' keyword")
     const name = this.consume(TokenType.IDENTIFIER, "Expected contract name").value
     this.consume(TokenType.LBRACE, "Expected '{' after contract name")
 
@@ -375,17 +422,45 @@ class Parser {
     const functions: FunctionDef[] = []
 
     while (!this.check(TokenType.RBRACE) && !this.isAtEnd()) {
-      if (this.check(TokenType.MAPPING)) mappings.push(this.parseMapping())
-      else if (this.check(TokenType.FUNCTION)) functions.push(this.parseFunction())
-      else if (this.isType()) variables.push(this.parseVariable())
-      else throw new Error(`Unexpected token: ${this.peek().value}`)
+      // Mosh 'let' syntax: let name: type = default;
+      if (this.check(TokenType.LET)) {
+        variables.push(this.parseMoshVariable())
+      }
+      // Mosh 'map' syntax: map name: keyType => valType;
+      else if (this.check(TokenType.MAPPING)) {
+        mappings.push(this.parseMapping())
+      }
+      // Function: 'function' or 'fn'
+      else if (this.check(TokenType.FUNCTION)) {
+        functions.push(this.parseFunction())
+      }
+      // Old-style: type name = default; (e.g. uint256 count = 0;)
+      else if (this.isType()) {
+        variables.push(this.parseOldVariable())
+      }
+      else {
+        throw new Error(`Unexpected token: ${this.peek().value}`)
+      }
     }
 
     this.consume(TokenType.RBRACE, "Expected '}' at end of contract")
     return { name, variables, mappings, functions }
   }
 
-  private parseVariable(): VariableDef {
+  // Mosh style: let name: type = default;
+  private parseMoshVariable(): VariableDef {
+    this.consume(TokenType.LET, "Expected 'let'")
+    const name = this.consume(TokenType.IDENTIFIER, "Expected variable name").value
+    this.consume(TokenType.COLON, "Expected ':' after variable name")
+    const varType = this.parseType()
+    let defaultValue: string | undefined
+    if (this.match(TokenType.EQ)) defaultValue = this.parseDefaultValue()
+    this.consume(TokenType.SEMICOLON, "Expected ';' after variable declaration")
+    return { name, var_type: varType, default: defaultValue }
+  }
+
+  // Old style: type name = default;
+  private parseOldVariable(): VariableDef {
     const varType = this.parseType()
     const name = this.consume(TokenType.IDENTIFIER, "Expected variable name").value
     let defaultValue: string | undefined
@@ -394,7 +469,6 @@ class Parser {
     return { name, var_type: varType, default: defaultValue }
   }
 
-  // Parse default value - NOW supports msg.sender, block.timestamp etc!
   private parseDefaultValue(): string {
     const token = this.peek()
     if (this.match(TokenType.NUMBER)) return token.value
@@ -405,47 +479,95 @@ class Parser {
     if (this.match(TokenType.MSG_VALUE)) return 'msg.value'
     if (this.match(TokenType.BLOCK_HEIGHT)) return 'block.height'
     if (this.match(TokenType.BLOCK_TIMESTAMP)) return 'block.timestamp'
+    if (this.match(TokenType.MOSH_BALANCE)) return 'mosh.balance'
+    if (this.match(TokenType.MOSH_HEIGHT)) return 'mosh.height'
+    if (this.match(TokenType.MOSH_TIME)) return 'mosh.time'
     if (this.check(TokenType.IDENTIFIER)) return this.advance().value
     throw new Error(`Expected default value, got: ${token.value}`)
   }
 
   private parseMapping(): MappingDef {
-    this.consume(TokenType.MAPPING, "Expected 'mapping'")
-    this.consume(TokenType.LPAREN, "Expected '(' after mapping")
-    const keyType = this.parseType()
-    this.consume(TokenType.ARROW, "Expected '=>' in mapping")
-    const valueType = this.parseType()
-    this.consume(TokenType.RPAREN, "Expected ')' after mapping type")
-    const name = this.consume(TokenType.IDENTIFIER, "Expected mapping name").value
-    this.consume(TokenType.SEMICOLON, "Expected ';' after mapping")
-    return { name, key_type: keyType, value_type: valueType }
+    this.consume(TokenType.MAPPING, "Expected 'mapping' or 'map'")
+
+    // Detect which syntax:
+    // Old: mapping(keyType => valType) name;
+    // Mosh: map name: keyType => valType;
+    if (this.check(TokenType.LPAREN)) {
+      // Old style: mapping(keyType => valType) name;
+      this.consume(TokenType.LPAREN, "Expected '('")
+      const keyType = this.parseType()
+      this.consume(TokenType.ARROW, "Expected '=>'")
+      const valueType = this.parseType()
+      this.consume(TokenType.RPAREN, "Expected ')'")
+      const name = this.consume(TokenType.IDENTIFIER, "Expected mapping name").value
+      this.consume(TokenType.SEMICOLON, "Expected ';'")
+      return { name, key_type: keyType, value_type: valueType }
+    } else {
+      // Mosh style: map name: keyType => valType;
+      const name = this.consume(TokenType.IDENTIFIER, "Expected mapping name").value
+      this.consume(TokenType.COLON, "Expected ':' after mapping name")
+      const keyType = this.parseType()
+      this.consume(TokenType.ARROW, "Expected '=>'")
+      const valueType = this.parseType()
+      this.consume(TokenType.SEMICOLON, "Expected ';'")
+      return { name, key_type: keyType, value_type: valueType }
+    }
   }
 
   private parseFunction(): FunctionDef {
-    const fnLine = this.peek().line  // Capture function line number
-    this.consume(TokenType.FUNCTION, "Expected 'function'")
+    const fnLine = this.peek().line
+    this.consume(TokenType.FUNCTION, "Expected 'function' or 'fn'")
     const name = this.consume(TokenType.IDENTIFIER, "Expected function name").value
-    
+
     this.consume(TokenType.LPAREN, "Expected '(' after function name")
     const args: { name: string; arg_type: string }[] = []
     if (!this.check(TokenType.RPAREN)) {
       do {
-        const argType = this.parseType()
-        const argName = this.consume(TokenType.IDENTIFIER, "Expected argument name").value
-        args.push({ name: argName, arg_type: argType })
+        // Support both: "type name" (old) and "name: type" (Mosh)
+        if (this.isType()) {
+          // Old style: type name
+          const argType = this.parseType()
+          const argName = this.consume(TokenType.IDENTIFIER, "Expected argument name").value
+          args.push({ name: argName, arg_type: argType })
+        } else if (this.check(TokenType.IDENTIFIER)) {
+          // Mosh style: name: type
+          const argName = this.advance().value
+          this.consume(TokenType.COLON, "Expected ':' after argument name")
+          const argType = this.parseType()
+          args.push({ name: argName, arg_type: argType })
+        }
       } while (this.match(TokenType.COMMA))
     }
-    this.consume(TokenType.RPAREN, "Expected ')' after arguments")
+    this.consume(TokenType.RPAREN, "Expected ')'")
 
+    // Parse modifiers (can appear before or after return type)
     const modifiers: string[] = []
-    while (this.check(TokenType.VIEW) || this.check(TokenType.WRITE) || 
-           this.check(TokenType.PAYABLE) || this.check(TokenType.ONLY_OWNER)) {
-      const mod = this.advance().value
-      modifiers.push(mod.charAt(0).toUpperCase() + mod.slice(1))
+    const parseModifiers = () => {
+      while (this.check(TokenType.VIEW) || this.check(TokenType.WRITE) ||
+             this.check(TokenType.PAYABLE) || this.check(TokenType.ONLY_OWNER)) {
+        const mod = this.advance()
+        // Normalize modifier names
+        switch (mod.type) {
+          case TokenType.VIEW: modifiers.push('View'); break
+          case TokenType.WRITE: modifiers.push('Write'); break
+          case TokenType.PAYABLE: modifiers.push('Payable'); break
+          case TokenType.ONLY_OWNER: modifiers.push('OnlyOwner'); break
+        }
+      }
     }
 
+    parseModifiers()
+
+    // Parse return type — support both 'returns type' and '-> type'
     let returns: string | undefined
-    if (this.match(TokenType.RETURNS)) returns = this.parseType()
+    if (this.match(TokenType.RETURNS)) {
+      returns = this.parseType()
+    } else if (this.match(TokenType.THIN_ARROW)) {
+      returns = this.parseType()
+    }
+
+    // Parse modifiers again (they could appear after return type)
+    parseModifiers()
 
     this.consume(TokenType.LBRACE, "Expected '{' before function body")
     const body: Operation[] = []
@@ -459,35 +581,39 @@ class Parser {
   }
 
   private parseStatement(): Operation | null {
-    const stmtLine = this.peek().line  // Capture statement line number
-    
+    const stmtLine = this.peek().line
+
+    // require / guard
     if (this.match(TokenType.REQUIRE)) {
-      this.consume(TokenType.LPAREN, "Expected '(' after require")
+      this.consume(TokenType.LPAREN, "Expected '(' after require/guard")
       const condition = this.parseExpression()
       let msg = "Requirement failed"
       if (this.match(TokenType.COMMA)) msg = this.consume(TokenType.STRING_LITERAL, "Expected error message").value
-      this.consume(TokenType.RPAREN, "Expected ')' after require")
-      this.consume(TokenType.SEMICOLON, "Expected ';' after require")
+      this.consume(TokenType.RPAREN, "Expected ')'")
+      this.consume(TokenType.SEMICOLON, "Expected ';'")
       return { op: 'require', left: condition.left, cmp: condition.cmp, right: condition.right, msg, line: stmtLine }
     }
 
+    // return
     if (this.match(TokenType.RETURN)) {
       const value = this.parseValueExpr()
       this.consume(TokenType.SEMICOLON, "Expected ';' after return")
       return { op: 'return', value: String(value), line: stmtLine }
     }
 
+    // transfer(to, amount)
     if (this.peek().value === 'transfer' && this.check(TokenType.IDENTIFIER)) {
       this.advance()
       this.consume(TokenType.LPAREN, "Expected '(' after transfer")
       const to = this.parseValueExpr()
       this.consume(TokenType.COMMA, "Expected ',' in transfer")
       const amount = this.parseValueExpr()
-      this.consume(TokenType.RPAREN, "Expected ')' after transfer")
-      this.consume(TokenType.SEMICOLON, "Expected ';' after transfer")
+      this.consume(TokenType.RPAREN, "Expected ')'")
+      this.consume(TokenType.SEMICOLON, "Expected ';'")
       return { op: 'transfer', to, amount, line: stmtLine }
     }
 
+    // emit / signal
     if (this.match(TokenType.EMIT)) {
       const eventName = this.consume(TokenType.IDENTIFIER, "Expected event name").value
       this.consume(TokenType.LPAREN, "Expected '(' after event name")
@@ -495,9 +621,42 @@ class Parser {
       if (!this.check(TokenType.RPAREN)) {
         do { eventArgs.push(this.parseValueExpr()) } while (this.match(TokenType.COMMA))
       }
-      this.consume(TokenType.RPAREN, "Expected ')' after event args")
-      this.consume(TokenType.SEMICOLON, "Expected ';' after emit")
-      return { op: 'emit', var: eventName, value: eventArgs, line: stmtLine }
+      this.consume(TokenType.RPAREN, "Expected ')'")
+      this.consume(TokenType.SEMICOLON, "Expected ';'")
+      return { op: 'emit', event_name: eventName, event_args: eventArgs, line: stmtLine }
+    }
+
+    // if/else
+    if (this.match(TokenType.IF)) {
+      this.consume(TokenType.LPAREN, "Expected '(' after if")
+      const condition = this.parseExpression()
+      this.consume(TokenType.RPAREN, "Expected ')' after condition")
+      this.consume(TokenType.LBRACE, "Expected '{'")
+      const thenBody: Operation[] = []
+      while (!this.check(TokenType.RBRACE) && !this.isAtEnd()) {
+        const op = this.parseStatement()
+        if (op) thenBody.push(op)
+      }
+      this.consume(TokenType.RBRACE, "Expected '}'")
+
+      let elseBody: Operation[] | undefined
+      if (this.match(TokenType.ELSE)) {
+        this.consume(TokenType.LBRACE, "Expected '{' after else")
+        elseBody = []
+        while (!this.check(TokenType.RBRACE) && !this.isAtEnd()) {
+          const op = this.parseStatement()
+          if (op) elseBody.push(op)
+        }
+        this.consume(TokenType.RBRACE, "Expected '}'")
+      }
+
+      return {
+        op: 'if',
+        condition: { left: condition.left, cmp: condition.cmp || '!=', right: condition.right ?? 0 },
+        then_body: thenBody,
+        else_body: elseBody,
+        line: stmtLine,
+      }
     }
 
     return this.parseAssignmentTarget(stmtLine)
@@ -506,26 +665,40 @@ class Parser {
   private parseAssignmentTarget(stmtLine: number): Operation | null {
     if (this.check(TokenType.IDENTIFIER)) {
       const name = this.advance().value
-      
+
+      // Mapping access: name[key] op= value
       if (this.match(TokenType.LBRACKET)) {
         const key = this.parseValueExpr()
-        this.consume(TokenType.RBRACKET, "Expected ']' after mapping key")
-        
+        this.consume(TokenType.RBRACKET, "Expected ']'")
+
         if (this.match(TokenType.PLUS_EQ)) {
           const value = this.parseValueExpr()
           this.consume(TokenType.SEMICOLON, "Expected ';'")
-          return { op: 'add_map', map: name, key, value, line: stmtLine }
+          return { op: 'map_add', map: name, key, value, line: stmtLine }
         } else if (this.match(TokenType.MINUS_EQ)) {
           const value = this.parseValueExpr()
           this.consume(TokenType.SEMICOLON, "Expected ';'")
-          return { op: 'sub_map', map: name, key, value, line: stmtLine }
+          return { op: 'map_sub', map: name, key, value, line: stmtLine }
+        } else if (this.match(TokenType.STAR_EQ)) {
+          const value = this.parseValueExpr()
+          this.consume(TokenType.SEMICOLON, "Expected ';'")
+          return { op: 'map_mul', map: name, key, value, line: stmtLine }
+        } else if (this.match(TokenType.SLASH_EQ)) {
+          const value = this.parseValueExpr()
+          this.consume(TokenType.SEMICOLON, "Expected ';'")
+          return { op: 'map_div', map: name, key, value, line: stmtLine }
+        } else if (this.match(TokenType.PERCENT_EQ)) {
+          const value = this.parseValueExpr()
+          this.consume(TokenType.SEMICOLON, "Expected ';'")
+          return { op: 'map_mod', map: name, key, value, line: stmtLine }
         } else if (this.match(TokenType.EQ)) {
           const value = this.parseValueExpr()
           this.consume(TokenType.SEMICOLON, "Expected ';'")
-          return { op: 'set_map', map: name, key, value, line: stmtLine }
+          return { op: 'map_set', map: name, key, value, line: stmtLine }
         }
       }
-      
+
+      // Variable assignment: name op= value
       if (this.match(TokenType.PLUS_EQ)) {
         const value = this.parseValueExpr()
         this.consume(TokenType.SEMICOLON, "Expected ';'")
@@ -542,6 +715,10 @@ class Parser {
         const value = this.parseValueExpr()
         this.consume(TokenType.SEMICOLON, "Expected ';'")
         return { op: 'div', var: name, value, line: stmtLine }
+      } else if (this.match(TokenType.PERCENT_EQ)) {
+        const value = this.parseValueExpr()
+        this.consume(TokenType.SEMICOLON, "Expected ';'")
+        return { op: 'mod', var: name, value, line: stmtLine }
       } else if (this.match(TokenType.EQ)) {
         const value = this.parseValueExpr()
         this.consume(TokenType.SEMICOLON, "Expected ';'")
@@ -573,6 +750,9 @@ class Parser {
     if (this.match(TokenType.MSG_VALUE)) return 'msg.value'
     if (this.match(TokenType.BLOCK_HEIGHT)) return 'block.height'
     if (this.match(TokenType.BLOCK_TIMESTAMP)) return 'block.timestamp'
+    if (this.match(TokenType.MOSH_BALANCE)) return 'mosh.balance'
+    if (this.match(TokenType.MOSH_HEIGHT)) return 'mosh.height'
+    if (this.match(TokenType.MOSH_TIME)) return 'mosh.time'
     if (this.check(TokenType.IDENTIFIER)) {
       const name = this.advance().value
       if (this.match(TokenType.LBRACKET)) {
@@ -587,7 +767,14 @@ class Parser {
 
   private parseType(): string {
     const token = this.peek()
-    if (this.isType()) { this.advance(); return token.value.toLowerCase() }
+    if (this.isType()) {
+      this.advance()
+      // Normalize Mosh short types to backend-expected types
+      const typeMap: Record<string, string> = {
+        'u256': 'uint256', 'u128': 'uint128', 'u64': 'uint64', 'u32': 'uint64', 'u16': 'uint64', 'u8': 'uint8'
+      }
+      return typeMap[token.value.toLowerCase()] || token.value.toLowerCase()
+    }
     throw new Error(`Expected type, got: ${token.value}`)
   }
 
@@ -630,90 +817,64 @@ export function compile(source: string): CompileResult {
     if (!contract.name) errors.push({ line: 1, column: 1, message: 'Contract must have a name' })
     if (contract.functions.length === 0) warnings.push('Contract has no functions')
 
-    // Get all declared variable and mapping names
     const declaredVars = new Set(contract.variables.map(v => v.name))
     const declaredMappings = new Set(contract.mappings.map(m => m.name))
 
-    // Validate each function
     for (const fn of contract.functions) {
       const fnLine = fn.line || 1
-      
+
       if (fn.modifiers.includes('View') && !fn.returns) {
         warnings.push(`View function '${fn.name}' has no return type`)
       }
 
-      // Get function argument names
       const argNames = new Set(fn.args.map(a => a.name))
 
-      // Check all operations in function body
-      for (const op of fn.body) {
-        const opLine = op.line || fnLine
-        
-        // Check variable references in 'var' field
-        if (op.var) {
-          if (!declaredVars.has(op.var) && !argNames.has(op.var)) {
-            errors.push({ 
-              line: opLine, 
-              column: 1, 
-              message: `Undefined variable '${op.var}'` 
-            })
-          }
-        }
+      const checkOps = (ops: Operation[]) => {
+        for (const op of ops) {
+          const opLine = op.line || fnLine
 
-        // Check mapping references
-        if (op.map) {
-          if (!declaredMappings.has(op.map)) {
-            errors.push({ 
-              line: opLine, 
-              column: 1, 
-              message: `Undefined mapping '${op.map}'` 
-            })
-          }
-        }
-
-        // Check value references (could be variable names)
-        if (op.value !== undefined && op.value !== null) {
-          const val = typeof op.value === 'string' ? op.value : String(op.value)
-          // Skip special values and literals
-          if (!val.startsWith('msg.') && 
-              !val.startsWith('block.') && 
-              !val.startsWith('contract.') &&
-              !declaredVars.has(val) && 
-              !declaredMappings.has(val) &&
-              !argNames.has(val) &&
-              isNaN(Number(val)) &&
-              val !== 'true' && val !== 'false' &&
-              !val.includes('[')) {
-            // Check if it looks like an identifier
-            if (/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(val)) {
-              errors.push({ 
-                line: opLine, 
-                column: 1, 
-                message: `Undefined variable '${val}'` 
-              })
+          // Check variable references
+          if (op.var && !['emit', 'if'].includes(op.op)) {
+            if (!declaredVars.has(op.var) && !argNames.has(op.var)) {
+              errors.push({ line: opLine, column: 1, message: `Undefined variable '${op.var}'` })
             }
           }
-        }
 
-        // Check 'left' operand in require statements
-        if (op.left !== undefined && op.left !== null) {
-          const val = typeof op.left === 'string' ? op.left : String(op.left)
-          if (!val.startsWith('msg.') && 
-              !val.startsWith('block.') && 
-              !declaredVars.has(val) && 
-              !declaredMappings.has(val) &&
-              !argNames.has(val) &&
-              isNaN(Number(val)) &&
-              !val.includes('[') &&
-              /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(val)) {
-            errors.push({ 
-              line: opLine, 
-              column: 1, 
-              message: `Undefined variable '${val}'` 
-            })
+          // Check mapping references
+          if (op.map) {
+            if (!declaredMappings.has(op.map)) {
+              errors.push({ line: opLine, column: 1, message: `Undefined mapping '${op.map}'` })
+            }
           }
+
+          // Check value references
+          if (op.value !== undefined && op.value !== null && typeof op.value === 'string') {
+            const val = op.value
+            if (!val.startsWith('msg.') && !val.startsWith('block.') && !val.startsWith('mosh.') &&
+                !val.startsWith('contract.') && !declaredVars.has(val) && !declaredMappings.has(val) &&
+                !argNames.has(val) && isNaN(Number(val)) && val !== 'true' && val !== 'false' &&
+                !val.includes('[') && /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(val)) {
+              errors.push({ line: opLine, column: 1, message: `Undefined variable '${val}'` })
+            }
+          }
+
+          // Check left operand
+          if (op.left !== undefined && op.left !== null) {
+            const val = typeof op.left === 'string' ? op.left : String(op.left)
+            if (!val.startsWith('msg.') && !val.startsWith('block.') && !val.startsWith('mosh.') &&
+                !declaredVars.has(val) && !declaredMappings.has(val) && !argNames.has(val) &&
+                isNaN(Number(val)) && !val.includes('[') && /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(val)) {
+              errors.push({ line: opLine, column: 1, message: `Undefined variable '${val}'` })
+            }
+          }
+
+          // Recurse into if/else bodies
+          if (op.then_body) checkOps(op.then_body)
+          if (op.else_body) checkOps(op.else_body)
         }
       }
+
+      checkOps(fn.body)
     }
 
     if (errors.length > 0) return { success: false, errors, warnings }
@@ -726,106 +887,255 @@ export function compile(source: string): CompileResult {
 // ==================== SAMPLE CONTRACTS ====================
 
 export const SAMPLE_CONTRACTS = {
-  counter: `contract Counter {
-    // State variables
-    uint256 count = 0;
+  counter: `forge Counter {
+    // State — Mosh uses 'let' and Rust-style types
+    let count: u256 = 0;
 
     // Increment counter
-    function increment() write {
+    fn increment() mut {
         count += 1;
+        signal CountChanged(count);
     }
 
-    // Decrement counter  
-    function decrement() write {
-        require(count > 0, "Count cannot go below zero");
+    // Decrement counter
+    fn decrement() mut {
+        guard(count > 0, "Count cannot go below zero");
         count -= 1;
     }
 
     // Get current count
-    function getCount() view returns uint256 {
+    fn getCount() pub -> u256 {
         return count;
     }
 
     // Set count directly
-    function setCount(uint256 newCount) write {
+    fn setCount(newCount: u256) mut {
         count = newCount;
     }
 }`,
 
-  token: `contract SimpleToken {
+  token: `// ============================================
+// MVM-20 Token Standard - SimpleToken
+// ============================================
+// A fungible token on the MVM blockchain.
+//
+// KEY CONCEPTS:
+// - MVM (native coin) is used to pay gas fees
+//   for all transactions including token transfers
+// - This token (MTK) is a SEPARATE asset from MVM
+// - Users need MVM balance to call transfer/mint
+// - Token balances are tracked in the "balances" mapping
+// - Decimals: 8 (1 MTK = 100,000,000 raw units)
+//
+// DEPLOYMENT:
+// - Costs ~1 MVM in gas to deploy (CreateToken tx)
+// - Total supply is minted to the deployer
+//
+// FUNCTIONS:
+// - transfer(to, amount) - Send tokens to another address
+// - balanceOf(account)   - Check token balance (view, no gas)
+// - mint(to, amount)     - Create new tokens (owner only)
+// - burn(amount)         - Destroy your own tokens
+// ============================================
+
+forge SimpleToken {
     // Token metadata
-    string name = "MyToken";
-    string symbol = "MTK";
-    uint256 totalSupply = 1000000;
-    uint8 decimals = 18;
+    let name: string = "MyToken";
+    let symbol: string = "MTK";
+    let totalSupply: u256 = 1000000;
+    let decimals: u8 = 8;
 
     // Balances mapping
-    mapping(address => uint256) balances;
+    map balances: address => u256;
 
-    // Transfer tokens
-    function transfer(address to, uint256 amount) write {
-        require(balances[msg.sender] >= amount, "Insufficient balance");
+    // Allowances: owner => spender => amount
+    map allowances: address => u256;
+
+    // Transfer tokens from sender to recipient
+    // Requires: sender has enough balance
+    // Gas cost: ~65,000 gas (paid in MVM)
+    fn transfer(to: address, amount: u256) mut {
+        guard(balances[msg.sender] >= amount, "Insufficient balance");
         balances[msg.sender] -= amount;
         balances[to] += amount;
+        signal Transfer(msg.sender, to, amount);
     }
 
-    // Get balance
-    function balanceOf(address account) view returns uint256 {
+    // Get token balance of an account
+    // This is a view function - no gas cost
+    fn balanceOf(account: address) pub -> u256 {
         return balances[account];
     }
 
-    // Mint new tokens
-    function mint(address to, uint256 amount) write {
+    // Mint new tokens (owner only)
+    // Increases total supply
+    fn mint(to: address, amount: u256) mut seal {
         balances[to] += amount;
         totalSupply += amount;
+        signal Mint(to, amount);
+    }
+
+    // Burn tokens from sender balance
+    // Decreases total supply permanently
+    fn burn(amount: u256) mut {
+        guard(balances[msg.sender] >= amount, "Insufficient balance");
+        balances[msg.sender] -= amount;
+        totalSupply -= amount;
+        signal Burn(msg.sender, amount);
     }
 }`,
 
-  vault: `contract StakingVault {
+  vault: `forge StakingVault {
     // State
-    uint256 totalStaked = 0;
-    uint256 rewardRate = 100;
+    let totalStaked: u256 = 0;
+    let rewardRate: u256 = 100;
 
     // Mappings
-    mapping(address => uint256) stakes;
+    map stakes: address => u256;
 
-    // Stake MVM
-    function stake() payable {
+    // Stake MVM tokens
+    fn stake() vault {
+        guard(msg.value > 0, "Must send tokens");
         stakes[msg.sender] += msg.value;
         totalStaked += msg.value;
+        signal Staked(msg.sender, msg.value);
     }
 
-    // Unstake MVM
-    function unstake(uint256 amount) write {
-        require(stakes[msg.sender] >= amount, "Insufficient stake");
+    // Unstake MVM tokens
+    fn unstake(amount: u256) mut {
+        guard(stakes[msg.sender] >= amount, "Insufficient stake");
         stakes[msg.sender] -= amount;
         totalStaked -= amount;
         transfer(msg.sender, amount);
+        signal Unstaked(msg.sender, amount);
     }
 
     // Get stake balance
-    function getStake(address account) view returns uint256 {
+    fn getStake(account: address) pub -> u256 {
         return stakes[account];
     }
 
     // Get total staked
-    function getTotalStaked() view returns uint256 {
+    fn getTotalStaked() pub -> u256 {
         return totalStaked;
     }
 }`,
 
-  empty: `contract MyContract {
+  empty: `forge MyContract {
     // Variables
-    uint256 value = 0;
+    let value: u256 = 0;
 
     // Set value
-    function setValue(uint256 newValue) write {
+    fn setValue(newValue: u256) mut {
         value = newValue;
     }
 
     // Get value
-    function getValue() view returns uint256 {
+    fn getValue() pub -> u256 {
         return value;
+    }
+}`,
+
+  lottery: `forge Lottery {
+    // State
+    let ticketPrice: u256 = 100;
+    let totalPool: u256 = 0;
+    let ticketCount: u256 = 0;
+    let isOpen: bool = true;
+
+    // Mappings
+    map tickets: address => u256;
+
+    // Buy lottery ticket
+    fn buyTicket() vault {
+        guard(msg.value >= ticketPrice, "Not enough for ticket");
+        guard(isOpen == true, "Lottery is closed");
+        tickets[msg.sender] += 1;
+        ticketCount += 1;
+        totalPool += msg.value;
+        signal TicketPurchased(msg.sender, ticketCount);
+    }
+
+    // Close lottery (owner only)
+    fn closeLottery() mut seal {
+        isOpen = false;
+        signal LotteryClosed(totalPool);
+    }
+
+    // Award winner (owner only)
+    fn awardWinner(winner: address) mut seal {
+        guard(isOpen == false, "Lottery still open");
+        if (totalPool > 0) {
+            transfer(winner, totalPool);
+            signal WinnerAwarded(winner, totalPool);
+        } else {
+            signal NoWinner(ticketCount);
+        }
+        totalPool = 0;
+        ticketCount = 0;
+        isOpen = true;
+    }
+}`,
+
+  calculator: `forge Calculator {
+    // State
+    let result: u256 = 0;
+    let lastOp: string = "none";
+
+    // Set initial value
+    fn set(val: u256) mut {
+        result = val;
+        lastOp = "set";
+        signal Calculate("set", val);
+    }
+
+    // Add to result
+    fn add(val: u256) mut {
+        result += val;
+        lastOp = "add";
+        signal Calculate("add", val);
+    }
+
+    // Subtract from result
+    fn subtract(val: u256) mut {
+        guard(result >= val, "Would underflow");
+        result -= val;
+        lastOp = "sub";
+    }
+
+    // Multiply result
+    fn multiply(val: u256) mut {
+        result *= val;
+        lastOp = "mul";
+    }
+
+    // Divide result
+    fn divide(val: u256) mut {
+        guard(val > 0, "Cannot divide by zero");
+        result /= val;
+        lastOp = "div";
+    }
+
+    // Modulo result
+    fn modulo(val: u256) mut {
+        guard(val > 0, "Cannot mod by zero");
+        result %= val;
+        lastOp = "mod";
+    }
+
+    // Conditional: double if above threshold
+    fn doubleIfAbove(threshold: u256) mut {
+        if (result > threshold) {
+            result *= 2;
+            signal Doubled(result);
+        } else {
+            signal BelowThreshold(result, threshold);
+        }
+    }
+
+    // Get result
+    fn getResult() pub -> u256 {
+        return result;
     }
 }`
 }

@@ -2,11 +2,11 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import * as Tabs from '@radix-ui/react-tabs'
-import { 
+import {
   FileCode, Play, Upload, Eye, Code, CheckCircle, XCircle, Loader,
   RefreshCw, ChevronDown, ChevronRight, Terminal, Zap, AlertTriangle,
   Copy, Check, ExternalLink, Send, BookOpen, Clock, Hash, User,
-  Database, Map, Activity, ArrowUpRight, ArrowDownLeft, Box
+  Database, Map, Activity, ArrowUpRight, ArrowDownLeft, Box, Coins
 } from 'lucide-react'
 import { api } from '@/lib/api'
 import { useWalletStore } from '@/store/walletStore'
@@ -14,6 +14,7 @@ import { formatAddress, copyToClipboard, formatTimeAgo, formatBalance } from '@/
 import { compile, SAMPLE_CONTRACTS, type CompileResult } from '@/lib/moshCompiler'
 import LoadingSpinner from '@/components/common/LoadingSpinner'
 import Card from '@/components/common/Card'
+import MoshEditor from '@/components/ide/MoshEditor'
 
 export default function ContractIDE() {
   const [searchParams] = useSearchParams()
@@ -24,24 +25,31 @@ export default function ContractIDE() {
   
   const { address: walletAddress, privateKey, isConnected, setShowWalletModal } = useWalletStore()
   
-  // User's contracts
+  // User's contracts and tokens
   const [userContracts, setUserContracts] = useState<any[]>([])
+  const [userTokens, setUserTokens] = useState<any[]>([])
   const [loadingContracts, setLoadingContracts] = useState(false)
 
-  // Load user's contracts
+  // Load user's contracts and tokens
   const loadUserContracts = async () => {
     if (!isConnected || !walletAddress) {
       setUserContracts([])
+      setUserTokens([])
       return
     }
-    
+
     setLoadingContracts(true)
     try {
-      const res = await api.getContractsByCreator(walletAddress)
-      setUserContracts(res.contracts || [])
+      const [contractsRes, tokensRes] = await Promise.all([
+        api.getContractsByCreator(walletAddress),
+        api.getTokensByCreator(walletAddress),
+      ])
+      setUserContracts(contractsRes.contracts || [])
+      setUserTokens(tokensRes.tokens || [])
     } catch (err) {
-      console.error('Failed to load contracts:', err)
+      console.error('Failed to load contracts/tokens:', err)
       setUserContracts([])
+      setUserTokens([])
     } finally {
       setLoadingContracts(false)
     }
@@ -84,10 +92,10 @@ export default function ContractIDE() {
               ${activeTab === 'contracts' ? 'bg-cyber text-white' : 'text-mist hover:text-ghost hover:bg-deep'}`}
           >
             <FileCode size={16} />
-            My Contracts
-            {userContracts.length > 0 && (
+            My Contracts & Tokens
+            {(userContracts.length + userTokens.length) > 0 && (
               <span className="ml-1 px-2 py-0.5 text-xs rounded-full bg-deep">
-                {userContracts.length}
+                {userContracts.length + userTokens.length}
               </span>
             )}
           </Tabs.Trigger>
@@ -107,7 +115,7 @@ export default function ContractIDE() {
             <Card className="text-center py-12">
               <FileCode size={48} className="mx-auto text-mist mb-4" />
               <h3 className="text-lg font-medium text-ghost mb-2">Connect Wallet</h3>
-              <p className="text-mist mb-4">Connect your wallet to see your deployed contracts</p>
+              <p className="text-mist mb-4">Connect your wallet to see your deployed contracts and tokens</p>
               <button onClick={() => setShowWalletModal(true)} className="btn-primary">
                 Connect Wallet
               </button>
@@ -116,73 +124,134 @@ export default function ContractIDE() {
             <div className="flex justify-center py-12">
               <LoadingSpinner />
             </div>
-          ) : userContracts.length === 0 ? (
+          ) : userContracts.length === 0 && userTokens.length === 0 ? (
             <Card className="text-center py-12">
               <FileCode size={48} className="mx-auto text-mist mb-4" />
-              <h3 className="text-lg font-medium text-ghost mb-2">No Contracts Yet</h3>
-              <p className="text-mist mb-4">Deploy your first smart contract to get started</p>
-              <button onClick={() => setActiveTab('deploy')} className="btn-primary">
-                Deploy Contract
-              </button>
+              <h3 className="text-lg font-medium text-ghost mb-2">No Contracts or Tokens Yet</h3>
+              <p className="text-mist mb-4">Deploy a smart contract or create a token to get started</p>
+              <div className="flex gap-3 justify-center">
+                <button onClick={() => setActiveTab('deploy')} className="btn-primary">
+                  Deploy Contract
+                </button>
+                <Link to="/tokens/create" className="btn-ghost border border-warning/30 text-warning hover:bg-warning/10">
+                  Create Token
+                </Link>
+              </div>
             </Card>
           ) : (
             <div className="grid gap-6 lg:grid-cols-12">
-              {/* Contract List - Sidebar */}
-              <div className="lg:col-span-3 space-y-3">
-                <h3 className="text-sm font-medium text-mist uppercase tracking-wider px-1">
-                  Your Contracts ({userContracts.length})
-                </h3>
-                <div className="space-y-2">
-                  {userContracts.map((contract: any) => (
-                    <motion.button
-                      key={contract.address}
-                      onClick={() => setSelectedContract(contract.address)}
-                      className={`w-full p-3 rounded-lg border text-left transition-all ${
-                        selectedContract === contract.address
-                          ? 'border-cyber bg-cyber/10'
-                          : 'border-deep bg-abyss hover:border-cyber/50'
-                      }`}
-                      whileHover={{ scale: 1.01 }}
-                      whileTap={{ scale: 0.99 }}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-lg ${
-                          selectedContract === contract.address ? 'bg-cyber/20' : 'bg-deep'
-                        }`}>
-                          <FileCode size={18} className={
-                            selectedContract === contract.address ? 'text-cyber' : 'text-mist'
-                          } />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium text-ghost text-sm">{contract.name}</div>
-                          <div className="text-xs text-mist font-mono truncate">
-                            {formatAddress(contract.address, 6)}
+              {/* Sidebar — Contracts + Tokens */}
+              <div className="lg:col-span-3 space-y-4">
+                {/* Contracts section */}
+                {userContracts.length > 0 && (
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-medium text-mist uppercase tracking-wider px-1">
+                      Contracts ({userContracts.length})
+                    </h3>
+                    {userContracts.map((contract: any) => (
+                      <motion.button
+                        key={contract.address}
+                        onClick={() => setSelectedContract(contract.address)}
+                        className={`w-full p-3 rounded-lg border text-left transition-all ${
+                          selectedContract === contract.address
+                            ? 'border-cyber bg-cyber/10'
+                            : 'border-deep bg-abyss hover:border-cyber/50'
+                        }`}
+                        whileHover={{ scale: 1.01 }}
+                        whileTap={{ scale: 0.99 }}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`p-2 rounded-lg ${
+                            selectedContract === contract.address ? 'bg-cyber/20' : 'bg-deep'
+                          }`}>
+                            <FileCode size={18} className={
+                              selectedContract === contract.address ? 'text-cyber' : 'text-mist'
+                            } />
                           </div>
-                          <div className="text-xs text-mist mt-1 flex items-center gap-1">
-                            <Clock size={10} />
-                            {formatTimeAgo(contract.created_at)}
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-ghost text-sm">{contract.name}</div>
+                            <div className="text-xs text-mist font-mono truncate">
+                              {formatAddress(contract.address, 6)}
+                            </div>
+                            <div className="text-xs text-mist mt-1 flex items-center gap-1">
+                              <Clock size={10} />
+                              {formatTimeAgo(contract.created_at)}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </motion.button>
-                  ))}
-                </div>
+                      </motion.button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Tokens section */}
+                {userTokens.length > 0 && (
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-medium text-mist uppercase tracking-wider px-1">
+                      Tokens ({userTokens.length})
+                    </h3>
+                    {userTokens.map((token: any) => (
+                      <motion.button
+                        key={token.address}
+                        onClick={() => setSelectedContract(token.address)}
+                        className={`w-full p-3 rounded-lg border text-left transition-all ${
+                          selectedContract === token.address
+                            ? 'border-warning bg-warning/10'
+                            : 'border-deep bg-abyss hover:border-warning/50'
+                        }`}
+                        whileHover={{ scale: 1.01 }}
+                        whileTap={{ scale: 0.99 }}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`p-2 rounded-lg ${
+                            selectedContract === token.address ? 'bg-warning/20' : 'bg-deep'
+                          }`}>
+                            <Coins size={18} className={
+                              selectedContract === token.address ? 'text-warning' : 'text-mist'
+                            } />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-ghost text-sm">{token.name}</span>
+                              <span className="text-xs px-1.5 py-0.5 rounded-full bg-warning/20 text-warning">
+                                {token.symbol}
+                              </span>
+                            </div>
+                            <div className="text-xs text-mist font-mono truncate">
+                              {formatAddress(token.address, 6)}
+                            </div>
+                            <div className="text-xs text-mist mt-1">
+                              Supply: {formatBalance(token.total_supply, token.decimals)}
+                            </div>
+                          </div>
+                        </div>
+                      </motion.button>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              {/* Contract Detail Panel */}
+              {/* Detail Panel */}
               <div className="lg:col-span-9">
                 {selectedContract ? (
-                  <ContractDetail 
-                    address={selectedContract}
-                    walletAddress={walletAddress}
-                    privateKey={privateKey}
-                    isConnected={isConnected}
-                    onConnectWallet={() => setShowWalletModal(true)}
-                  />
+                  // Check if the selected item is a token
+                  userTokens.some((t: any) => t.address === selectedContract) ? (
+                    <TokenDetail
+                      token={userTokens.find((t: any) => t.address === selectedContract)!}
+                    />
+                  ) : (
+                    <ContractDetail
+                      address={selectedContract}
+                      walletAddress={walletAddress}
+                      privateKey={privateKey}
+                      isConnected={isConnected}
+                      onConnectWallet={() => setShowWalletModal(true)}
+                    />
+                  )
                 ) : (
                   <Card className="text-center py-16">
                     <BookOpen size={48} className="mx-auto text-mist mb-4" />
-                    <p className="text-mist">Select a contract to view details and interact</p>
+                    <p className="text-mist">Select a contract or token to view details</p>
                   </Card>
                 )}
               </div>
@@ -415,6 +484,131 @@ function ContractDetail({
           )}
         </motion.div>
       </AnimatePresence>
+    </div>
+  )
+}
+
+// ============================================================
+// TOKEN DETAIL COMPONENT
+// ============================================================
+
+function TokenDetail({ token }: { token: any }) {
+  const [holders, setHolders] = useState<{ address: string; balance_raw: number }[]>([])
+  const [holderCount, setHolderCount] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    const fetchHolders = async () => {
+      try {
+        const res = await api.getTokenHolders(token.address)
+        setHolders(res.holders || [])
+        setHolderCount(res.holder_count ?? 0)
+      } catch {
+        setHolders([])
+      }
+      setLoading(false)
+    }
+    fetchHolders()
+  }, [token.address])
+
+  const handleCopy = async () => {
+    await copyToClipboard(token.address)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Token Header */}
+      <Card>
+        <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+          <div className="flex-1">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 rounded-lg bg-warning/20">
+                <Coins size={24} className="text-warning" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl font-bold text-ghost">{token.name}</h2>
+                  <span className="px-2 py-0.5 text-xs rounded-full bg-warning/20 text-warning font-medium">
+                    {token.symbol}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                  <code className="text-sm text-electric font-mono">{token.address}</code>
+                  <button onClick={handleCopy} className="text-mist hover:text-ghost transition-colors">
+                    {copied ? <Check size={14} className="text-success" /> : <Copy size={14} />}
+                  </button>
+                  <Link to={`/address/${token.address}`} className="text-mist hover:text-cyber transition-colors">
+                    <ExternalLink size={14} />
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Token Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 pt-4 border-t border-deep">
+          <div className="p-3 bg-deep rounded-lg text-center">
+            <div className="text-xs text-mist">Total Supply</div>
+            <div className="text-lg font-bold text-ghost">{formatBalance(token.total_supply, token.decimals)}</div>
+          </div>
+          <div className="p-3 bg-deep rounded-lg text-center">
+            <div className="text-xs text-mist">Decimals</div>
+            <div className="text-lg font-bold text-ghost">{token.decimals}</div>
+          </div>
+          <div className="p-3 bg-deep rounded-lg text-center">
+            <div className="text-xs text-mist">Holders</div>
+            <div className="text-lg font-bold text-ghost">{holderCount}</div>
+          </div>
+          <div className="p-3 bg-deep rounded-lg text-center">
+            <div className="text-xs text-mist">Symbol</div>
+            <div className="text-lg font-bold text-ghost">{token.symbol}</div>
+          </div>
+        </div>
+      </Card>
+
+      {/* Holders List */}
+      <Card>
+        <h3 className="text-lg font-semibold text-ghost mb-4 flex items-center gap-2">
+          <User size={18} className="text-warning" />
+          Token Holders ({holderCount})
+        </h3>
+        {loading ? (
+          <div className="flex justify-center py-8">
+            <LoadingSpinner />
+          </div>
+        ) : holders.length === 0 ? (
+          <div className="text-center py-8 text-mist">No holders found</div>
+        ) : (
+          <div className="space-y-2">
+            {holders.map((holder, i) => (
+              <Link
+                key={holder.address}
+                to={`/address/${holder.address}`}
+                className="flex items-center justify-between p-3 rounded-lg bg-deep/50 hover:bg-deep transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-warning to-orange-500 flex items-center justify-center text-white font-bold text-sm">
+                    {i + 1}
+                  </div>
+                  <span className="font-mono text-sm text-electric">
+                    {formatAddress(holder.address)}
+                  </span>
+                </div>
+                <div className="text-right">
+                  <div className="font-mono text-ghost">
+                    {formatBalance(holder.balance_raw, token.decimals)}
+                  </div>
+                  <div className="text-xs text-mist">{token.symbol}</div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </Card>
     </div>
   )
 }
@@ -1284,52 +1478,15 @@ function DeployContract({
           </div>
         </div>
 
-        {/* Editor with Line Numbers */}
-        <div className={`flex h-[460px] overflow-hidden transition-colors ${
-          isEditing ? 'bg-[#0d1117]' : 'bg-void'
-        }`}>
-          {/* Line Numbers */}
-          <div 
-            ref={lineNumbersRef}
-            className={`flex-shrink-0 w-12 border-r text-right select-none overflow-hidden transition-colors ${
-              isEditing ? 'bg-[#161b22] border-cyber/20' : 'bg-abyss border-deep'
-            }`}
-          >
-            <div className="py-4 pr-3 font-mono text-sm leading-[1.5]">
-              {code.split('\n').map((_, i) => (
-                <div 
-                  key={i} 
-                  className={`h-[1.5em] transition-colors ${
-                    cursorLine === i + 1 && isEditing
-                      ? 'text-cyber font-bold' 
-                      : 'text-mist/50'
-                  }`}
-                >
-                  {i + 1}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Code Area */}
-          <textarea
-            ref={textareaRef}
+        {/* Monaco Editor */}
+        <div className="h-[460px] md:h-[460px] max-md:h-[300px]">
+          <MoshEditor
             value={code}
-            onChange={(e) => {
-              setCode(e.target.value)
-              handleCursorChange(e)
+            onChange={(val) => setCode(val)}
+            onCursorChange={(line, col) => {
+              setCursorLine(line)
+              setCursorCol(col)
             }}
-            onFocus={() => setIsEditing(true)}
-            onBlur={() => setIsEditing(false)}
-            onScroll={handleScroll}
-            onKeyUp={handleCursorChange}
-            onClick={handleCursorChange}
-            className={`flex-1 py-4 px-4 font-mono text-sm resize-none focus:outline-none leading-[1.5] transition-colors ${
-              isEditing ? 'bg-[#0d1117] text-[#c9d1d9]' : 'bg-void text-ghost'
-            }`}
-            spellCheck={false}
-            placeholder="// Write your Mosh contract here..."
-            style={{ lineHeight: '1.5' }}
           />
         </div>
 

@@ -57,6 +57,7 @@ export default function AddressDetail() {
   // Check if address is a token
   const [isToken, setIsToken] = useState(false)
   const [tokenInfo, setTokenInfo] = useState<any>(null)
+  const [holderCount, setHolderCount] = useState<number>(0)
 
   useEffect(() => {
     const checkToken = async () => {
@@ -66,6 +67,11 @@ export default function AddressDetail() {
         if (res.token) {
           setIsToken(true)
           setTokenInfo(res.token)
+          // Fetch holder count
+          try {
+            const holdersRes = await api.getTokenHolders(address)
+            setHolderCount(holdersRes.holder_count ?? 0)
+          } catch {}
         }
       } catch {
         setIsToken(false)
@@ -104,8 +110,10 @@ export default function AddressDetail() {
     )
   }
 
-  const balance = accountData?.balance ?? 0
-  const nonce = accountData?.nonce ?? 0
+  // API returns { success, account: { balance, balance_raw, nonce, ... }, ... }
+  const account = (accountData as any)?.account
+  const balance = account?.balance_raw ?? 0
+  const nonce = account?.nonce ?? 0
   const transactions = txsData?.transactions ?? []
 
   return (
@@ -217,7 +225,8 @@ export default function AddressDetail() {
             <InfoItem label="Symbol" value={tokenInfo.symbol} />
             <InfoItem label="Decimals" value={tokenInfo.decimals} />
             <InfoItem label="Total Supply" value={formatBalance(tokenInfo.total_supply, tokenInfo.decimals)} />
-            <InfoItem label="Owner" value={formatAddress(tokenInfo.owner)} link={`/address/${tokenInfo.owner}`} />
+            <InfoItem label="Holders" value={holderCount.toString()} />
+            <InfoItem label="Owner" value={formatAddress(tokenInfo.owner || tokenInfo.creator)} link={`/address/${tokenInfo.owner || tokenInfo.creator}`} />
           </div>
         </motion.div>
       )}
@@ -260,7 +269,7 @@ export default function AddressDetail() {
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap
               ${activeTab === 'tokens' ? 'bg-cyber text-white' : 'text-mist hover:text-ghost hover:bg-deep'}`}
           >
-            Token Holdings
+            {isToken ? 'Token Holders' : 'Token Holdings'}
           </Tabs.Trigger>
         </Tabs.List>
 
@@ -269,7 +278,11 @@ export default function AddressDetail() {
         </Tabs.Content>
 
         <Tabs.Content value="tokens" className="mt-4">
-          <TokenHoldings address={address} tokens={tokensData?.tokens || []} />
+          {isToken ? (
+            <TokenHoldersList tokenAddress={address} decimals={tokenInfo?.decimals ?? 8} symbol={tokenInfo?.symbol ?? ''} />
+          ) : (
+            <TokenHoldings address={address} tokens={tokensData?.tokens || []} />
+          )}
         </Tabs.Content>
       </Tabs.Root>
     </div>
@@ -350,7 +363,7 @@ function TokenHoldings({ address, tokens }: { address: string; tokens: any[] }) 
       for (const token of tokens) {
         try {
           const res = await api.getTokenBalance(token.address, address)
-          newBalances[token.address] = res.balance
+          newBalances[token.address] = res.balance_raw
         } catch {
           newBalances[token.address] = 0
         }
@@ -408,5 +421,75 @@ function TokenHoldings({ address, tokens }: { address: string; tokens: any[] }) 
         </Card>
       ))}
     </div>
+  )
+}
+
+function TokenHoldersList({ tokenAddress, decimals, symbol }: { tokenAddress: string; decimals: number; symbol: string }) {
+  const [holders, setHolders] = useState<{ address: string; balance_raw: number }[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchHolders = async () => {
+      try {
+        const res = await api.getTokenHolders(tokenAddress)
+        setHolders(res.holders || [])
+      } catch {
+        setHolders([])
+      }
+      setLoading(false)
+    }
+    fetchHolders()
+  }, [tokenAddress])
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-12">
+        <LoadingSpinner />
+      </div>
+    )
+  }
+
+  if (holders.length === 0) {
+    return (
+      <Card>
+        <div className="text-center py-8 text-mist">
+          No holders found
+        </div>
+      </Card>
+    )
+  }
+
+  return (
+    <Card>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold text-ghost">
+          Holders ({holders.length})
+        </h3>
+      </div>
+      <div className="space-y-2">
+        {holders.map((holder, i) => (
+          <Link
+            key={holder.address}
+            to={`/address/${holder.address}`}
+            className="flex items-center justify-between p-3 rounded-lg bg-deep/50 hover:bg-deep transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyber to-electric flex items-center justify-center text-white font-bold text-sm">
+                {i + 1}
+              </div>
+              <span className="font-mono text-sm text-electric">
+                {formatAddress(holder.address)}
+              </span>
+            </div>
+            <div className="text-right">
+              <div className="font-mono text-ghost">
+                {formatBalance(holder.balance_raw, decimals)}
+              </div>
+              <div className="text-xs text-mist">{symbol}</div>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </Card>
   )
 }

@@ -1,13 +1,14 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  Wallet as WalletIcon, 
-  Send, 
-  Download, 
-  Droplets, 
-  Copy, 
-  Check, 
-  Eye, 
+import { QRCodeSVG } from 'qrcode.react'
+import {
+  Wallet as WalletIcon,
+  Send,
+  Download,
+  Droplets,
+  Copy,
+  Check,
+  Eye,
   EyeOff,
   RefreshCw,
   ExternalLink,
@@ -20,7 +21,7 @@ import {
 import { useWalletStore } from '@/store/walletStore'
 import { useBalance, useAddressTransactions, useFaucet, useTokens } from '@/hooks/useApi'
 import { api } from '@/lib/api'
-import { formatBalance, formatAddress, formatTimeAgo, copyToClipboard } from '@/lib/format'
+import { formatBalance, formatAddress, formatTimeAgo, copyToClipboard, normalizeTxType } from '@/lib/format'
 import { isValidAddress } from '@/lib/crypto'
 import LoadingSpinner from '@/components/common/LoadingSpinner'
 import Card from '@/components/common/Card'
@@ -285,13 +286,13 @@ function TokenBalances({ address, tokens }: { address: string; tokens: any[] }) 
   const [loading, setLoading] = useState(true)
 
   // Fetch token balances
-  useState(() => {
+  useEffect(() => {
     const fetchBalances = async () => {
       const balances: Record<string, number> = {}
       for (const token of tokens) {
         try {
           const res = await api.getTokenBalance(token.address, address)
-          balances[token.address] = res.balance
+          balances[token.address] = res.balance_raw
         } catch {
           balances[token.address] = 0
         }
@@ -304,7 +305,7 @@ function TokenBalances({ address, tokens }: { address: string; tokens: any[] }) 
     } else {
       setLoading(false)
     }
-  })
+  }, [address, tokens])
 
   return (
     <Card>
@@ -349,6 +350,28 @@ function TokenBalances({ address, tokens }: { address: string; tokens: any[] }) 
 function RecentActivity({ transactions, address }: { transactions: any[]; address: string }) {
   const recentTxs = transactions.slice(0, 5)
 
+  const txMeta: Record<string, { label: string; icon: string; color: string; bg: string }> = {
+    transfer:        { label: 'Transfer',       icon: '💸', color: 'text-electric', bg: 'bg-electric/20' },
+    create_token:    { label: 'Create Token',   icon: '🪙', color: 'text-warning',  bg: 'bg-warning/20' },
+    transfer_token:  { label: 'Token Transfer', icon: '🔄', color: 'text-neon',     bg: 'bg-neon/20' },
+    deploy_contract: { label: 'Deploy Contract', icon: '📝', color: 'text-glow',    bg: 'bg-glow/20' },
+    call_contract:   { label: 'Contract Call',  icon: '⚡', color: 'text-success',  bg: 'bg-success/20' },
+  }
+
+  // Extract contract details from tx.data
+  function getContractInfo(tx: any): { method?: string; contract?: string; name?: string } | null {
+    const data = tx.data
+    if (!data) return null
+    // Backend serde format: { "CallContract": { contract, method, args } }
+    if (data.CallContract) return { method: data.CallContract.method, contract: data.CallContract.contract }
+    // snake_case format from as_str: { contract, method, args }
+    if (data.contract && data.method) return { method: data.method, contract: data.contract }
+    // Deploy contract
+    if (data.DeployContract) return { name: data.DeployContract.name }
+    if (data.name && !data.method) return { name: data.name }
+    return null
+  }
+
   return (
     <Card>
       <h3 className="text-lg font-semibold text-ghost mb-4 flex items-center gap-2">
@@ -363,33 +386,67 @@ function RecentActivity({ transactions, address }: { transactions: any[]; addres
         <div className="space-y-3">
           {recentTxs.map((tx) => {
             const isOutgoing = tx.from?.toLowerCase() === address.toLowerCase()
+            const txType = normalizeTxType(tx.tx_type)
+            const meta = txMeta[txType] || txMeta.transfer
+            const rawValue = Number(tx.value_raw ?? tx.value ?? 0)
+            const isTransfer = txType === 'transfer' || txType === 'transfer_token'
+            const contractInfo = getContractInfo(tx)
+
+            // Label: for transfers show Sent/Received, for others show tx type
+            let label = meta.label
+            if (isTransfer) {
+              label = isOutgoing ? 'Sent' : 'Received'
+            }
+
+            // Subtitle: show contract method or contract name
+            let subtitle = ''
+            if (contractInfo?.method) {
+              subtitle = `${contractInfo.method}()`
+            } else if (contractInfo?.name) {
+              subtitle = contractInfo.name
+            }
+
             return (
-              <a 
+              <a
                 key={tx.hash}
                 href={`/tx/${tx.hash}`}
                 className="flex items-center justify-between p-3 rounded-lg bg-deep/50 hover:bg-deep transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${isOutgoing ? 'bg-error/20' : 'bg-success/20'}`}>
-                    {isOutgoing ? (
-                      <ArrowUpRight size={16} className="text-error" />
+                  <div className={`p-2 rounded-lg ${isTransfer ? (isOutgoing ? 'bg-error/20' : 'bg-success/20') : meta.bg}`}>
+                    {isTransfer ? (
+                      isOutgoing ? <ArrowUpRight size={16} className="text-error" /> : <ArrowDownLeft size={16} className="text-success" />
                     ) : (
-                      <ArrowDownLeft size={16} className="text-success" />
+                      <span className="text-sm">{meta.icon}</span>
                     )}
                   </div>
                   <div>
-                    <div className="font-medium text-ghost">
-                      {isOutgoing ? 'Sent' : 'Received'}
-                    </div>
-                    <div className="text-xs text-mist">
-                      {formatTimeAgo(tx.timestamp)}
-                    </div>
+                    <div className="font-medium text-ghost">{label}</div>
+                    {subtitle ? (
+                      <div className="text-xs text-mist font-mono">{subtitle}</div>
+                    ) : (
+                      <div className="text-xs text-mist">{formatTimeAgo(tx.timestamp)}</div>
+                    )}
+                    {subtitle && (
+                      <div className="text-xs text-mist">{formatTimeAgo(tx.timestamp)}</div>
+                    )}
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className={`font-mono ${isOutgoing ? 'text-error' : 'text-success'}`}>
-                    {isOutgoing ? '-' : '+'}{formatBalance(tx.value)} MVM
-                  </div>
+                  {isTransfer && rawValue > 0 ? (
+                    <div className={`font-mono ${isOutgoing ? 'text-error' : 'text-success'}`}>
+                      {isOutgoing ? '-' : '+'}{formatBalance(rawValue)} MVM
+                    </div>
+                  ) : rawValue > 0 ? (
+                    <div className="font-mono text-mist">
+                      {formatBalance(rawValue)} MVM
+                    </div>
+                  ) : (
+                    <div className={`text-sm ${meta.color}`}>{meta.label}</div>
+                  )}
+                  {tx.status === 'Failed' && (
+                    <div className="text-xs text-error">Failed</div>
+                  )}
                 </div>
               </a>
             )
@@ -397,7 +454,7 @@ function RecentActivity({ transactions, address }: { transactions: any[]; addres
         </div>
       )}
       {transactions.length > 5 && (
-        <a 
+        <a
           href={`/address/${address}`}
           className="block text-center mt-4 text-sm text-electric hover:text-ice"
         >
@@ -431,14 +488,16 @@ function SendForm({ address, privateKey, balance, onSuccess }: { address: string
       return
     }
 
-    const amountWei = parseFloat(amount) * 1e18
-    if (isNaN(amountWei) || amountWei <= 0) {
+    const amountNum = parseFloat(amount)
+    if (isNaN(amountNum) || amountNum <= 0) {
       setError('Invalid amount')
       return
     }
 
-    if (amountWei > balance) {
-      setError('Insufficient balance')
+    // Balance is in raw units (8 decimals), convert to human-readable for comparison
+    const balanceMVM = balance / 1e8
+    if (amountNum > balanceMVM) {
+      setError(`Insufficient balance: you have ${balanceMVM.toFixed(4)} MVM`)
       return
     }
 
@@ -448,12 +507,13 @@ function SendForm({ address, privateKey, balance, onSuccess }: { address: string
       const { pending_nonce } = await api.getPendingNonce(address)
       
       // Sign and submit transaction via backend API
+      // Backend multiplies value by 1e8 internally, so send human-readable amount
       const result = await api.signAndSubmit(
         privateKey,
         'transfer',
         address,
         to,
-        amountWei,
+        amountNum,
         pending_nonce
       )
       
@@ -473,7 +533,7 @@ function SendForm({ address, privateKey, balance, onSuccess }: { address: string
   }
 
   const setMaxAmount = () => {
-    const maxAmount = Math.max(0, balance - 1e15) / 1e18 // Leave some for gas
+    const maxAmount = Math.max(0, (balance / 1e8) - 1) // Leave 1 MVM for gas
     setAmount(maxAmount.toFixed(4))
   }
 
@@ -575,12 +635,15 @@ function ReceiveForm({ address }: { address: string }) {
         Share your address to receive MVM or tokens
       </p>
 
-      {/* QR Code Placeholder */}
-      <div className="w-48 h-48 mx-auto mb-6 bg-white rounded-xl p-4 flex items-center justify-center">
-        <div className="text-void text-center">
-          <div className="text-4xl mb-2">📱</div>
-          <div className="text-xs">QR Code</div>
-        </div>
+      {/* QR Code */}
+      <div className="w-48 h-48 mx-auto mb-6 bg-white rounded-xl p-3 flex items-center justify-center">
+        <QRCodeSVG
+          value={address}
+          size={168}
+          bgColor="#ffffff"
+          fgColor="#0d1117"
+          level="M"
+        />
       </div>
 
       {/* Address */}

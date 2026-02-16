@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Plus, Download, Eye, EyeOff, AlertTriangle } from 'lucide-react'
+import { X, Plus, Download, Eye, EyeOff, AlertTriangle, Check, Loader } from 'lucide-react'
 import { useWalletStore } from '@/store/walletStore'
 import { createWallet, isValidPrivateKey, getPublicKey, getAddress } from '@/lib/crypto'
 import { useCreateWallet } from '@/hooks/useApi'
@@ -18,39 +18,57 @@ interface NormalizedWallet {
   publicKey: string
 }
 
+type CreationStep = 'idle' | 'generating' | 'deriving' | 'ready'
+
+const CREATION_STEPS: { key: CreationStep; label: string }[] = [
+  { key: 'generating', label: 'Generating private key...' },
+  { key: 'deriving', label: 'Deriving public key & address...' },
+  { key: 'ready', label: 'Wallet ready!' },
+]
+
 export default function WalletModal({ open, onClose }: WalletModalProps) {
-  const [mode, setMode] = useState<'select' | 'create' | 'import'>('select')
+  const [mode, setMode] = useState<'select' | 'creating' | 'create' | 'import'>('select')
   const [privateKeyInput, setPrivateKeyInput] = useState('')
   const [showKey, setShowKey] = useState(false)
   const [error, setError] = useState('')
   const [newWallet, setNewWallet] = useState<NormalizedWallet | null>(null)
-  
+  const [creationStep, setCreationStep] = useState<CreationStep>('idle')
+
   const { setWallet } = useWalletStore()
   const createWalletMutation = useCreateWallet()
 
   const handleCreateWallet = async () => {
+    setMode('creating')
+    setCreationStep('generating')
+
+    // Step animation
+    await new Promise(r => setTimeout(r, 600))
+    setCreationStep('deriving')
+
     try {
       let wallet: NormalizedWallet
-      
+
       try {
-        // API returns snake_case: { address, private_key, public_key }
         const apiResult = await createWalletMutation.mutateAsync()
-        
-        // Normalize to camelCase
         wallet = {
           address: apiResult.address,
           privateKey: apiResult.private_key,
           publicKey: apiResult.public_key,
         }
       } catch {
-        // Local fallback already uses camelCase
         wallet = createWallet()
       }
-      
+
+      await new Promise(r => setTimeout(r, 400))
+      setCreationStep('ready')
       setNewWallet(wallet)
+      await new Promise(r => setTimeout(r, 500))
       setMode('create')
+      setCreationStep('idle')
     } catch (err) {
       setError('Failed to create wallet')
+      setMode('select')
+      setCreationStep('idle')
     }
   }
 
@@ -101,6 +119,7 @@ export default function WalletModal({ open, onClose }: WalletModalProps) {
             <div className="flex items-center justify-between mb-6">
               <Dialog.Title className="text-xl font-bold text-ghost">
                 {mode === 'select' && 'Connect Wallet'}
+                {mode === 'creating' && 'Creating Wallet...'}
                 {mode === 'create' && 'New Wallet Created'}
                 {mode === 'import' && 'Import Wallet'}
               </Dialog.Title>
@@ -112,6 +131,43 @@ export default function WalletModal({ open, onClose }: WalletModalProps) {
             </div>
 
             <AnimatePresence mode="wait">
+              {mode === 'creating' && (
+                <motion.div
+                  key="creating"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="py-8 space-y-4"
+                >
+                  {CREATION_STEPS.map((step) => {
+                    const stepIdx = CREATION_STEPS.findIndex(s => s.key === step.key)
+                    const currentIdx = CREATION_STEPS.findIndex(s => s.key === creationStep)
+                    const isDone = stepIdx < currentIdx
+                    const isActive = stepIdx === currentIdx
+                    return (
+                      <div key={step.key} className="flex items-center gap-3">
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
+                          isDone ? 'bg-success/20' : isActive ? 'bg-cyber/20' : 'bg-deep'
+                        }`}>
+                          {isDone ? (
+                            <Check size={14} className="text-success" />
+                          ) : isActive ? (
+                            <Loader size={14} className="text-cyber animate-spin" />
+                          ) : (
+                            <div className="w-2 h-2 rounded-full bg-shadow" />
+                          )}
+                        </div>
+                        <span className={`text-sm ${
+                          isDone ? 'text-success' : isActive ? 'text-ghost' : 'text-shadow'
+                        }`}>
+                          {step.label}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </motion.div>
+              )}
+
               {mode === 'select' && (
                 <motion.div
                   key="select"

@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ArrowRight, Clock } from 'lucide-react'
 import type { Transaction } from '@/types'
-import { formatAddress, formatTimeAgo, formatBalance, formatHash } from '@/lib/format'
+import { formatAddress, formatTimeAgo, formatBalance, formatHash, normalizeTxType } from '@/lib/format'
 import { TX_TYPES } from '@/lib/constants'
 
 interface TxCardProps {
@@ -11,7 +11,8 @@ interface TxCardProps {
 }
 
 export default function TxCard({ tx, isNew }: TxCardProps) {
-  const txType = TX_TYPES[tx.tx_type] || { label: tx.tx_type, icon: '📄', color: 'text-mist' }
+  const normalizedType = normalizeTxType(tx.tx_type as string)
+  const txType = (TX_TYPES as Record<string, any>)[normalizedType] || { label: tx.tx_type, icon: '📄', color: 'text-mist' }
 
   const statusBadge = {
     Pending: 'badge-warning',
@@ -45,8 +46,8 @@ export default function TxCard({ tx, isNew }: TxCardProps) {
             <div className={`text-sm font-medium ${txType.color}`}>
               {txType.label}
             </div>
-            {tx.value > 0 && (
-              <div className="text-sm text-ghost">{formatBalance(tx.value)} MVM</div>
+            {Number(tx.value_raw ?? tx.value) > 0 && (
+              <div className="text-sm text-ghost">{tx.value_raw != null ? formatBalance(tx.value_raw) : tx.value} MVM</div>
             )}
             <div className="flex items-center gap-1 text-xs text-mist mt-1 justify-end">
               <Clock size={12} />

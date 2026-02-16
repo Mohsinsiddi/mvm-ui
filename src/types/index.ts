@@ -13,13 +13,15 @@ export interface Transaction {
   tx_type: 'transfer' | 'create_token' | 'transfer_token' | 'deploy_contract' | 'call_contract'
   from: string
   to: string | null
-  value: number
+  value: string | number
+  value_raw?: number
   nonce: number
   timestamp: number
   status: 'Pending' | 'Success' | 'Failed'
   gas_used?: number
   error?: string
   data?: any
+  block_height?: number | null
 }
 
 export interface Account {

@@ -98,6 +98,8 @@ export function useFaucet() {
     mutationFn: (address: string) => api.faucet(address),
     onSuccess: (_, address) => {
       queryClient.invalidateQueries({ queryKey: ['balance', address] })
+      queryClient.invalidateQueries({ queryKey: ['addressTxs', address] })
+      queryClient.invalidateQueries({ queryKey: ['transactions'] })
     },
   })
 }
@@ -138,6 +140,24 @@ export function useContractMBI(address: string) {
   return useQuery({
     queryKey: ['contractMBI', address],
     queryFn: () => api.getContractMBI(address),
+    enabled: !!address,
+  })
+}
+
+// Leaderboard
+export function useLeaderboard() {
+  return useQuery({
+    queryKey: ['leaderboard'],
+    queryFn: () => api.getLeaderboard(),
+    refetchInterval: 10000,
+  })
+}
+
+// Contract Events
+export function useContractEvents(address: string) {
+  return useQuery({
+    queryKey: ['contractEvents', address],
+    queryFn: () => api.getContractEvents(address),
     enabled: !!address,
   })
 }

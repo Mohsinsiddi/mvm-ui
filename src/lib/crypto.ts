@@ -52,6 +52,12 @@ export function createWallet(): { privateKey: string; publicKey: string; address
 export function isValidAddress(address: string): boolean {
   try {
     if (!address || !address.startsWith('mvm1')) return false
+    // Contract addresses (mvm1contract...) and token addresses (mvm1token...) are hex-based, not bech32
+    if (address.startsWith('mvm1contract') || address.startsWith('mvm1token')) {
+      return /^mvm1(contract|token)[0-9a-f]+$/.test(address)
+    }
+    // Special addresses like mvm1faucet
+    if (address === 'mvm1faucet') return true
     bech32.decode(address)
     return true
   } catch {
