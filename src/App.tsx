@@ -33,6 +33,7 @@ export default function App() {
           <Route path="/terminal" element={<Terminal />} />
           <Route path="/node" element={<NodeConnection />} />
           <Route path="/contracts" element={<ContractIDE />} />
+          <Route path="/ide" element={<ContractIDE />} />
           <Route path="/learn/wallet" element={<WalletLab />} />
           <Route path="/learn/vanity" element={<VanityGenerator />} />
           <Route path="/tokens/create" element={<TokenCreator />} />
