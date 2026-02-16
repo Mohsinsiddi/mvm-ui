@@ -6,7 +6,7 @@ import {
   FileCode, Play, Upload, Eye, Code, CheckCircle, XCircle, Loader,
   RefreshCw, ChevronDown, ChevronRight, Terminal, Zap, AlertTriangle,
   Copy, Check, ExternalLink, Send, BookOpen, Clock, Hash, User,
-  Database, Map, Activity, ArrowUpRight, ArrowDownLeft, Box, Coins
+  Database, Map, Activity, ArrowUpRight, ArrowDownLeft, Box, Coins, Droplets
 } from 'lucide-react'
 import { api } from '@/lib/api'
 import { useWalletStore } from '@/store/walletStore'
@@ -19,9 +19,12 @@ import MoshEditor from '@/components/ide/MoshEditor'
 export default function ContractIDE() {
   const [searchParams] = useSearchParams()
   const addressParam = searchParams.get('address')
-  
-  const [activeTab, setActiveTab] = useState<'contracts' | 'deploy'>('contracts')
+  const tabParam = searchParams.get('tab') as 'contracts' | 'tokens' | 'deploy' | null
+  const tokenParam = searchParams.get('token')
+
+  const [activeTab, setActiveTab] = useState<'contracts' | 'tokens' | 'deploy'>(tabParam || 'contracts')
   const [selectedContract, setSelectedContract] = useState<string | null>(addressParam)
+  const [selectedToken, setSelectedToken] = useState<string | null>(tokenParam)
   
   const { address: walletAddress, privateKey, isConnected, setShowWalletModal } = useWalletStore()
   
@@ -65,6 +68,11 @@ export default function ContractIDE() {
     }
   }, [addressParam])
 
+  useEffect(() => {
+    if (tabParam) setActiveTab(tabParam)
+    if (tokenParam) setSelectedToken(tokenParam)
+  }, [tabParam, tokenParam])
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -92,10 +100,23 @@ export default function ContractIDE() {
               ${activeTab === 'contracts' ? 'bg-cyber text-white' : 'text-mist hover:text-ghost hover:bg-deep'}`}
           >
             <FileCode size={16} />
-            My Contracts & Tokens
-            {(userContracts.length + userTokens.length) > 0 && (
+            My Contracts
+            {userContracts.length > 0 && (
               <span className="ml-1 px-2 py-0.5 text-xs rounded-full bg-deep">
-                {userContracts.length + userTokens.length}
+                {userContracts.length}
+              </span>
+            )}
+          </Tabs.Trigger>
+          <Tabs.Trigger
+            value="tokens"
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2
+              ${activeTab === 'tokens' ? 'bg-cyber text-white' : 'text-mist hover:text-ghost hover:bg-deep'}`}
+          >
+            <Coins size={16} />
+            My Tokens
+            {userTokens.length > 0 && (
+              <span className="ml-1 px-2 py-0.5 text-xs rounded-full bg-deep">
+                {userTokens.length}
               </span>
             )}
           </Tabs.Trigger>
@@ -115,7 +136,7 @@ export default function ContractIDE() {
             <Card className="text-center py-12">
               <FileCode size={48} className="mx-auto text-mist mb-4" />
               <h3 className="text-lg font-medium text-ghost mb-2">Connect Wallet</h3>
-              <p className="text-mist mb-4">Connect your wallet to see your deployed contracts and tokens</p>
+              <p className="text-mist mb-4">Connect your wallet to see your deployed contracts</p>
               <button onClick={() => setShowWalletModal(true)} className="btn-primary">
                 Connect Wallet
               </button>
@@ -124,134 +145,156 @@ export default function ContractIDE() {
             <div className="flex justify-center py-12">
               <LoadingSpinner />
             </div>
-          ) : userContracts.length === 0 && userTokens.length === 0 ? (
+          ) : userContracts.length === 0 ? (
             <Card className="text-center py-12">
               <FileCode size={48} className="mx-auto text-mist mb-4" />
-              <h3 className="text-lg font-medium text-ghost mb-2">No Contracts or Tokens Yet</h3>
-              <p className="text-mist mb-4">Deploy a smart contract or create a token to get started</p>
-              <div className="flex gap-3 justify-center">
-                <button onClick={() => setActiveTab('deploy')} className="btn-primary">
-                  Deploy Contract
-                </button>
-                <Link to="/tokens/create" className="btn-ghost border border-warning/30 text-warning hover:bg-warning/10">
-                  Create Token
-                </Link>
-              </div>
+              <h3 className="text-lg font-medium text-ghost mb-2">No Contracts Yet</h3>
+              <p className="text-mist mb-4">Deploy a smart contract to get started</p>
+              <button onClick={() => setActiveTab('deploy')} className="btn-primary">
+                Deploy Contract
+              </button>
             </Card>
           ) : (
             <div className="grid gap-6 lg:grid-cols-12">
-              {/* Sidebar — Contracts + Tokens */}
-              <div className="lg:col-span-3 space-y-4">
-                {/* Contracts section */}
-                {userContracts.length > 0 && (
-                  <div className="space-y-2">
-                    <h3 className="text-sm font-medium text-mist uppercase tracking-wider px-1">
-                      Contracts ({userContracts.length})
-                    </h3>
-                    {userContracts.map((contract: any) => (
-                      <motion.button
-                        key={contract.address}
-                        onClick={() => setSelectedContract(contract.address)}
-                        className={`w-full p-3 rounded-lg border text-left transition-all ${
-                          selectedContract === contract.address
-                            ? 'border-cyber bg-cyber/10'
-                            : 'border-deep bg-abyss hover:border-cyber/50'
-                        }`}
-                        whileHover={{ scale: 1.01 }}
-                        whileTap={{ scale: 0.99 }}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className={`p-2 rounded-lg ${
-                            selectedContract === contract.address ? 'bg-cyber/20' : 'bg-deep'
-                          }`}>
-                            <FileCode size={18} className={
-                              selectedContract === contract.address ? 'text-cyber' : 'text-mist'
-                            } />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="font-medium text-ghost text-sm">{contract.name}</div>
-                            <div className="text-xs text-mist font-mono truncate">
-                              {formatAddress(contract.address, 6)}
-                            </div>
-                            <div className="text-xs text-mist mt-1 flex items-center gap-1">
-                              <Clock size={10} />
-                              {formatTimeAgo(contract.created_at)}
-                            </div>
-                          </div>
+              {/* Sidebar — Contracts */}
+              <div className="lg:col-span-3 space-y-2">
+                {userContracts.map((contract: any) => (
+                  <motion.button
+                    key={contract.address}
+                    onClick={() => setSelectedContract(contract.address)}
+                    className={`w-full p-3 rounded-lg border text-left transition-all ${
+                      selectedContract === contract.address
+                        ? 'border-cyber bg-cyber/10'
+                        : 'border-deep bg-abyss hover:border-cyber/50'
+                    }`}
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-lg ${
+                        selectedContract === contract.address ? 'bg-cyber/20' : 'bg-deep'
+                      }`}>
+                        <FileCode size={18} className={
+                          selectedContract === contract.address ? 'text-cyber' : 'text-mist'
+                        } />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-ghost text-sm">{contract.name}</div>
+                        <div className="text-xs text-mist font-mono truncate">
+                          {formatAddress(contract.address, 6)}
                         </div>
-                      </motion.button>
-                    ))}
-                  </div>
-                )}
-
-                {/* Tokens section */}
-                {userTokens.length > 0 && (
-                  <div className="space-y-2">
-                    <h3 className="text-sm font-medium text-mist uppercase tracking-wider px-1">
-                      Tokens ({userTokens.length})
-                    </h3>
-                    {userTokens.map((token: any) => (
-                      <motion.button
-                        key={token.address}
-                        onClick={() => setSelectedContract(token.address)}
-                        className={`w-full p-3 rounded-lg border text-left transition-all ${
-                          selectedContract === token.address
-                            ? 'border-warning bg-warning/10'
-                            : 'border-deep bg-abyss hover:border-warning/50'
-                        }`}
-                        whileHover={{ scale: 1.01 }}
-                        whileTap={{ scale: 0.99 }}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className={`p-2 rounded-lg ${
-                            selectedContract === token.address ? 'bg-warning/20' : 'bg-deep'
-                          }`}>
-                            <Coins size={18} className={
-                              selectedContract === token.address ? 'text-warning' : 'text-mist'
-                            } />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium text-ghost text-sm">{token.name}</span>
-                              <span className="text-xs px-1.5 py-0.5 rounded-full bg-warning/20 text-warning">
-                                {token.symbol}
-                              </span>
-                            </div>
-                            <div className="text-xs text-mist font-mono truncate">
-                              {formatAddress(token.address, 6)}
-                            </div>
-                            <div className="text-xs text-mist mt-1">
-                              Supply: {formatBalance(token.total_supply, token.decimals)}
-                            </div>
-                          </div>
+                        <div className="text-xs text-mist mt-1 flex items-center gap-1">
+                          <Clock size={10} />
+                          {formatTimeAgo(contract.created_at)}
                         </div>
-                      </motion.button>
-                    ))}
-                  </div>
-                )}
+                      </div>
+                    </div>
+                  </motion.button>
+                ))}
               </div>
 
               {/* Detail Panel */}
               <div className="lg:col-span-9">
                 {selectedContract ? (
-                  // Check if the selected item is a token
-                  userTokens.some((t: any) => t.address === selectedContract) ? (
-                    <TokenDetail
-                      token={userTokens.find((t: any) => t.address === selectedContract)!}
-                    />
-                  ) : (
-                    <ContractDetail
-                      address={selectedContract}
-                      walletAddress={walletAddress}
-                      privateKey={privateKey}
-                      isConnected={isConnected}
-                      onConnectWallet={() => setShowWalletModal(true)}
-                    />
-                  )
+                  <ContractDetail
+                    address={selectedContract}
+                    walletAddress={walletAddress}
+                    privateKey={privateKey}
+                    isConnected={isConnected}
+                    onConnectWallet={() => setShowWalletModal(true)}
+                  />
                 ) : (
                   <Card className="text-center py-16">
                     <BookOpen size={48} className="mx-auto text-mist mb-4" />
-                    <p className="text-mist">Select a contract or token to view details</p>
+                    <p className="text-mist">Select a contract to view details</p>
+                  </Card>
+                )}
+              </div>
+            </div>
+          )}
+        </Tabs.Content>
+
+        {/* My Tokens Tab */}
+        <Tabs.Content value="tokens" className="mt-6">
+          {!isConnected ? (
+            <Card className="text-center py-12">
+              <Coins size={48} className="mx-auto text-mist mb-4" />
+              <h3 className="text-lg font-medium text-ghost mb-2">Connect Wallet</h3>
+              <p className="text-mist mb-4">Connect your wallet to see your created tokens</p>
+              <button onClick={() => setShowWalletModal(true)} className="btn-primary">
+                Connect Wallet
+              </button>
+            </Card>
+          ) : loadingContracts ? (
+            <div className="flex justify-center py-12">
+              <LoadingSpinner />
+            </div>
+          ) : userTokens.length === 0 ? (
+            <Card className="text-center py-12">
+              <Coins size={48} className="mx-auto text-mist mb-4" />
+              <h3 className="text-lg font-medium text-ghost mb-2">No Tokens Yet</h3>
+              <p className="text-mist mb-4">Create an MVM20 token to get started</p>
+              <Link to="/tokens/create" className="btn-primary inline-flex items-center gap-2">
+                Create Token
+              </Link>
+            </Card>
+          ) : (
+            <div className="grid gap-6 lg:grid-cols-12">
+              {/* Sidebar — Tokens */}
+              <div className="lg:col-span-3 space-y-2">
+                {userTokens.map((token: any) => (
+                  <motion.button
+                    key={token.address}
+                    onClick={() => setSelectedToken(token.address)}
+                    className={`w-full p-3 rounded-lg border text-left transition-all ${
+                      selectedToken === token.address
+                        ? 'border-warning bg-warning/10'
+                        : 'border-deep bg-abyss hover:border-warning/50'
+                    }`}
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-lg ${
+                        selectedToken === token.address ? 'bg-warning/20' : 'bg-deep'
+                      }`}>
+                        <Coins size={18} className={
+                          selectedToken === token.address ? 'text-warning' : 'text-mist'
+                        } />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-ghost text-sm">{token.name}</span>
+                          <span className="text-xs px-1.5 py-0.5 rounded-full bg-warning/20 text-warning">
+                            {token.symbol}
+                          </span>
+                        </div>
+                        <div className="text-xs text-mist font-mono truncate">
+                          {formatAddress(token.address, 6)}
+                        </div>
+                        <div className="text-xs text-mist mt-1">
+                          Supply: {formatBalance(token.total_supply, token.decimals)}
+                        </div>
+                      </div>
+                    </div>
+                  </motion.button>
+                ))}
+              </div>
+
+              {/* Detail Panel */}
+              <div className="lg:col-span-9">
+                {selectedToken ? (
+                  <TokenDetail
+                    token={userTokens.find((t: any) => t.address === selectedToken)!}
+                    walletAddress={walletAddress}
+                    privateKey={privateKey}
+                    isConnected={isConnected}
+                    onConnectWallet={() => setShowWalletModal(true)}
+                  />
+                ) : (
+                  <Card className="text-center py-16">
+                    <Coins size={48} className="mx-auto text-mist mb-4" />
+                    <p className="text-mist">Select a token to view details and functions</p>
                   </Card>
                 )}
               </div>
@@ -492,30 +535,108 @@ function ContractDetail({
 // TOKEN DETAIL COMPONENT
 // ============================================================
 
-function TokenDetail({ token }: { token: any }) {
+interface TokenDetailProps {
+  token: any
+  walletAddress?: string | null
+  privateKey?: string | null
+  isConnected?: boolean
+  onConnectWallet?: () => void
+}
+
+function TokenDetail({ token, walletAddress, privateKey, isConnected, onConnectWallet }: TokenDetailProps) {
   const [holders, setHolders] = useState<{ address: string; balance_raw: number }[]>([])
   const [holderCount, setHolderCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [copied, setCopied] = useState(false)
 
+  // balance_of state
+  const [balanceAddr, setBalanceAddr] = useState('')
+  const [balanceResult, setBalanceResult] = useState<string | null>(null)
+  const [balanceLoading, setBalanceLoading] = useState(false)
+  const [balanceError, setBalanceError] = useState('')
+
+  // transfer state
+  const [transferTo, setTransferTo] = useState('')
+  const [transferAmount, setTransferAmount] = useState('')
+  const [transferResult, setTransferResult] = useState<string | null>(null)
+  const [transferLoading, setTransferLoading] = useState(false)
+  const [transferError, setTransferError] = useState('')
+
+  // token transactions
+  const [tokenTxs, setTokenTxs] = useState<any[]>([])
+  const [txsLoading, setTxsLoading] = useState(true)
+
   useEffect(() => {
-    const fetchHolders = async () => {
+    const fetchData = async () => {
+      setLoading(true)
+      setTxsLoading(true)
       try {
-        const res = await api.getTokenHolders(token.address)
-        setHolders(res.holders || [])
-        setHolderCount(res.holder_count ?? 0)
+        const [holdersRes, txsRes] = await Promise.all([
+          api.getTokenHolders(token.address),
+          api.getAddressTransactions(token.address).catch(() => ({ transactions: [] })),
+        ])
+        setHolders(holdersRes.holders || [])
+        setHolderCount(holdersRes.holder_count ?? 0)
+        setTokenTxs(txsRes.transactions || [])
       } catch {
         setHolders([])
+        setTokenTxs([])
       }
       setLoading(false)
+      setTxsLoading(false)
     }
-    fetchHolders()
+    fetchData()
   }, [token.address])
 
   const handleCopy = async () => {
     await copyToClipboard(token.address)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleBalanceOf = async () => {
+    if (!balanceAddr.trim()) return
+    setBalanceLoading(true)
+    setBalanceError('')
+    setBalanceResult(null)
+    try {
+      const res = await api.getTokenBalance(token.address, balanceAddr.trim())
+      setBalanceResult(formatBalance(res.balance_raw, token.decimals))
+    } catch (err: any) {
+      setBalanceError(err.message || 'Failed to fetch balance')
+    } finally {
+      setBalanceLoading(false)
+    }
+  }
+
+  const handleTransfer = async () => {
+    if (!isConnected || !walletAddress || !privateKey) {
+      onConnectWallet?.()
+      return
+    }
+    if (!transferTo.trim() || !transferAmount.trim()) return
+
+    setTransferLoading(true)
+    setTransferError('')
+    setTransferResult(null)
+    try {
+      // Check balance before broadcasting
+      const balRes = await api.getBalance(walletAddress)
+      const bal = balRes.balance_raw || 0
+      if (bal < 100_000_000) {
+        throw new Error(`Insufficient balance: need at least 1.0 MVM for gas, have ${(bal / 1e8).toFixed(4)} MVM. Go to /wallet to use the faucet.`)
+      }
+
+      const rawAmount = Math.floor(parseFloat(transferAmount) * Math.pow(10, token.decimals))
+      const res = await api.transferToken(privateKey, walletAddress, token.address, transferTo.trim(), rawAmount)
+      setTransferResult(res.hash || res.tx_hash || 'Transaction submitted')
+      setTransferTo('')
+      setTransferAmount('')
+    } catch (err: any) {
+      setTransferError(err.message || 'Transfer failed')
+    } finally {
+      setTransferLoading(false)
+    }
   }
 
   return (
@@ -568,6 +689,182 @@ function TokenDetail({ token }: { token: any }) {
             <div className="text-lg font-bold text-ghost">{token.symbol}</div>
           </div>
         </div>
+      </Card>
+
+      {/* Token Functions */}
+      <div className="grid gap-4 md:grid-cols-2">
+        {/* Read: balance_of */}
+        <Card>
+          <h3 className="text-lg font-semibold text-ghost mb-4 flex items-center gap-2">
+            <Eye size={18} className="text-neon" />
+            Read Functions
+            <span className="text-xs px-2 py-0.5 rounded-full bg-neon/20 text-neon">No gas</span>
+          </h3>
+          <div className="p-4 bg-deep rounded-lg space-y-3">
+            <div className="font-mono text-sm text-ghost">balance_of</div>
+            <input
+              type="text"
+              value={balanceAddr}
+              onChange={(e) => setBalanceAddr(e.target.value)}
+              placeholder="Enter address..."
+              className="input w-full text-sm"
+            />
+            <button
+              onClick={handleBalanceOf}
+              disabled={balanceLoading || !balanceAddr.trim()}
+              className="w-full py-2 rounded-lg font-medium flex items-center justify-center gap-2 bg-neon text-void hover:bg-neon/90 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {balanceLoading ? <Loader size={16} className="animate-spin" /> : <Eye size={16} />}
+              Read
+            </button>
+            {balanceResult !== null && (
+              <div className="p-3 bg-success/10 border border-success/30 rounded-lg">
+                <div className="text-xs text-success font-medium mb-1">Balance</div>
+                <div className="font-mono text-ghost">{balanceResult} {token.symbol}</div>
+              </div>
+            )}
+            {balanceError && (
+              <div className="p-3 bg-error/10 border border-error/30 rounded-lg text-sm text-error">
+                {balanceError}
+              </div>
+            )}
+          </div>
+        </Card>
+
+        {/* Write: transfer */}
+        <Card>
+          <h3 className="text-lg font-semibold text-ghost mb-4 flex items-center gap-2">
+            <Send size={18} className="text-warning" />
+            Write Functions
+            <span className="text-xs px-2 py-0.5 rounded-full bg-warning/20 text-warning">Requires signature</span>
+          </h3>
+          {!isConnected && (
+            <div className="mb-4 p-3 bg-warning/10 border border-warning/30 rounded-lg flex items-center gap-3">
+              <AlertTriangle size={18} className="text-warning" />
+              <span className="text-sm text-warning">Connect wallet to transfer tokens</span>
+              <button onClick={() => onConnectWallet?.()} className="ml-auto btn-primary text-sm py-1 px-3">
+                Connect
+              </button>
+            </div>
+          )}
+          <div className="p-4 bg-deep rounded-lg space-y-3">
+            <div className="font-mono text-sm text-ghost">transfer</div>
+            <input
+              type="text"
+              value={transferTo}
+              onChange={(e) => setTransferTo(e.target.value)}
+              placeholder="Recipient address..."
+              className="input w-full text-sm"
+            />
+            <input
+              type="text"
+              value={transferAmount}
+              onChange={(e) => setTransferAmount(e.target.value)}
+              placeholder={`Amount (${token.symbol})`}
+              className="input w-full text-sm"
+            />
+            <button
+              onClick={handleTransfer}
+              disabled={transferLoading || !isConnected || !transferTo.trim() || !transferAmount.trim()}
+              className="w-full py-2 rounded-lg font-medium flex items-center justify-center gap-2 bg-warning text-void hover:bg-warning/90 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {transferLoading ? <Loader size={16} className="animate-spin" /> : <Send size={16} />}
+              Transfer
+            </button>
+            {transferResult && (
+              <div className="p-3 bg-success/10 border border-success/30 rounded-lg">
+                <div className="text-xs text-success font-medium mb-1">Transaction</div>
+                <div className="font-mono text-ghost text-sm break-all">{transferResult}</div>
+              </div>
+            )}
+            {transferError && (
+              <div className="p-3 bg-error/10 border border-error/30 rounded-lg">
+                <div className="text-sm text-error">{transferError}</div>
+                {transferError.includes('Insufficient balance') && (
+                  <Link to="/wallet" className="mt-2 flex items-center gap-1 text-xs text-electric hover:text-cyber transition-colors">
+                    <Droplets size={12} />
+                    Go to Wallet to use the faucet
+                  </Link>
+                )}
+              </div>
+            )}
+          </div>
+        </Card>
+      </div>
+
+      {/* Token Transactions */}
+      <Card>
+        <h3 className="text-lg font-semibold text-ghost mb-4 flex items-center gap-2">
+          <Activity size={18} className="text-cyber" />
+          Token Transactions ({tokenTxs.length})
+        </h3>
+        {txsLoading ? (
+          <div className="flex justify-center py-8">
+            <LoadingSpinner />
+          </div>
+        ) : tokenTxs.length === 0 ? (
+          <div className="text-center py-8 text-mist">No transactions yet</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-mist border-b border-deep">
+                  <th className="pb-3 pr-4">Hash</th>
+                  <th className="pb-3 pr-4">Type</th>
+                  <th className="pb-3 pr-4">From</th>
+                  <th className="pb-3 pr-4">To</th>
+                  <th className="pb-3 pr-4">Amount</th>
+                  <th className="pb-3">Time</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tokenTxs.map((tx: any) => {
+                  const data = tx.data || {}
+                  const transferToAddr = data.TransferToken?.to || data.to || null
+                  const amount = data.TransferToken?.amount || data.amount || 0
+                  const txType = tx.tx_type || ''
+                  const isCreate = txType.toLowerCase().includes('create')
+                  return (
+                    <tr key={tx.hash} className="border-b border-deep/50 hover:bg-deep/30">
+                      <td className="py-3 pr-4">
+                        <Link to={`/tx/${tx.hash}`} className="text-electric hover:text-cyber font-mono">
+                          {formatAddress(tx.hash, 8)}
+                        </Link>
+                      </td>
+                      <td className="py-3 pr-4">
+                        <span className={`px-2 py-0.5 rounded-full text-xs ${
+                          isCreate ? 'bg-success/20 text-success' : 'bg-neon/20 text-neon'
+                        }`}>
+                          {isCreate ? 'Create' : 'Transfer'}
+                        </span>
+                      </td>
+                      <td className="py-3 pr-4">
+                        <Link to={`/address/${tx.from}`} className="text-mist hover:text-ghost font-mono">
+                          {formatAddress(tx.from, 4)}
+                        </Link>
+                      </td>
+                      <td className="py-3 pr-4">
+                        {transferToAddr ? (
+                          <Link to={`/address/${transferToAddr}`} className="text-mist hover:text-ghost font-mono">
+                            {formatAddress(transferToAddr, 4)}
+                          </Link>
+                        ) : (
+                          <span className="text-mist">—</span>
+                        )}
+                      </td>
+                      <td className="py-3 pr-4 font-mono text-ghost">
+                        {amount > 0 ? `${formatBalance(amount, token.decimals)} ${token.symbol}` : '—'}
+                      </td>
+                      <td className="py-3 text-mist">
+                        {formatTimeAgo(tx.timestamp)}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Card>
 
       {/* Holders List */}
@@ -1085,6 +1382,13 @@ function FunctionCard({
           return
         }
 
+        // Check balance before broadcasting
+        const balRes = await api.getBalance(walletAddress)
+        const bal = balRes.balance_raw || 0
+        if (bal < 100_000_000) {
+          throw new Error(`Insufficient balance: need at least 1.0 MVM for gas, have ${(bal / 1e8).toFixed(4)} MVM. Go to /wallet to use the faucet.`)
+        }
+
         const res = await api.callContract(
           privateKey,
           walletAddress,
@@ -1214,6 +1518,12 @@ function FunctionCard({
               {error && (
                 <div className="p-3 bg-error/10 border border-error/30 rounded-lg">
                   <div className="text-sm text-error">{error}</div>
+                  {error.includes('Insufficient balance') && (
+                    <Link to="/wallet" className="mt-2 flex items-center gap-1 text-xs text-electric hover:text-cyber transition-colors">
+                      <Droplets size={12} />
+                      Go to Wallet to use the faucet
+                    </Link>
+                  )}
                 </div>
               )}
             </div>
@@ -1369,7 +1679,16 @@ function DeployContract({
       addLog('🚀 Starting deployment...')
       addLog(`📍 Wallet: ${formatAddress(walletAddress)}`)
       addLog(`📝 Contract: ${compileResult.json.name}`)
-      
+
+      // Check balance before broadcasting
+      addLog('💰 Checking balance...')
+      const balRes = await api.getBalance(walletAddress)
+      const bal = balRes.balance_raw || 0
+      if (bal < 100_000_000) {
+        throw new Error(`Insufficient balance: need at least 1.0 MVM for gas, have ${(bal / 1e8).toFixed(4)} MVM. Use the faucet on the Wallet page first.`)
+      }
+      addLog(`💰 Balance: ${(bal / 1e8).toFixed(4)} MVM ✓`)
+
       const result = await api.deployContract(privateKey, walletAddress, compileResult.json)
       addLog(`✅ Transaction submitted: ${result.hash || result.tx_hash}`)
       
@@ -1469,7 +1788,7 @@ function DeployContract({
                       }}
                       className="w-full px-4 py-2 text-left text-sm text-mist hover:text-ghost hover:bg-deep transition-colors"
                     >
-                      {name.charAt(0).toUpperCase() + name.slice(1)}
+                      {name.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
                     </button>
                   ))}
                 </div>
@@ -1617,9 +1936,20 @@ function DeployContract({
                 )}
               </div>
             ) : (
-              <div className="flex items-center gap-2 text-error">
-                <XCircle size={18} />
-                <span>{deployResult.error}</span>
+              <div>
+                <div className="flex items-center gap-2 text-error">
+                  <XCircle size={18} />
+                  <span>{deployResult.error}</span>
+                </div>
+                {deployResult.error?.includes('Insufficient balance') && (
+                  <Link
+                    to="/wallet"
+                    className="mt-3 flex items-center gap-2 text-sm text-electric hover:text-cyber transition-colors"
+                  >
+                    <Droplets size={14} />
+                    Go to Wallet to use the faucet
+                  </Link>
+                )}
               </div>
             )}
           </Card>

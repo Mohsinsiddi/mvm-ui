@@ -338,8 +338,27 @@ class ApiClient {
   }
 
   /**
-   * Call a contract method (write operation)
+   * Transfer MVM20 tokens
    */
+  async transferToken(
+    privateKey: string,
+    from: string,
+    tokenAddress: string,
+    to: string,
+    amount: number
+  ): Promise<any> {
+    const nonceRes = await this.getPendingNonce(from)
+    return this.signAndSubmit(
+      privateKey,
+      'transfer_token',
+      from,
+      null,
+      0,
+      nonceRes.pending_nonce,
+      { contract: tokenAddress, to, amount }
+    )
+  }
+
   // ==================== EVENTS ====================
 
   async getContractEvents(address: string): Promise<{ events: any[] }> {

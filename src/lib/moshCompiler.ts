@@ -1137,5 +1137,117 @@ forge SimpleToken {
     fn getResult() pub -> u256 {
         return result;
     }
+}`,
+
+  simple_storage: `// ============================================
+// SimpleStorage Contract
+// ============================================
+// A basic key-value storage contract.
+// Each user can store their own value, and
+// the contract tracks the last stored value
+// and who stored it.
+//
+// FUNCTIONS:
+// - setValue(newValue)  - Store a value (tracked per user)
+// - getValue()         - Get the current stored value (view)
+// ============================================
+
+forge SimpleStorage {
+    // State
+    let storedValue: u256 = 0;
+    let lastSender: string = "";
+
+    // Per-user value storage
+    map userValues: address => u256;
+
+    // Store a value
+    // Updates the global stored value, records who sent it,
+    // and saves it in the per-user mapping
+    fn setValue(newValue: u256) mut {
+        storedValue = newValue;
+        lastSender = msg.sender;
+        userValues[msg.sender] = newValue;
+        signal ValueSet(msg.sender, newValue);
+    }
+
+    // Get the current stored value
+    fn getValue() pub -> u256 {
+        return storedValue;
+    }
+}`,
+
+  voting: `// ============================================
+// Voting Contract
+// ============================================
+// A simple yes-vote contract for proposals.
+// Each address can vote once. Tracks total
+// votes and individual vote status.
+//
+// FUNCTIONS:
+// - voteYes()    - Cast a yes vote (one per address)
+// - getTotal()   - Get total vote count (view)
+// ============================================
+
+forge Voting {
+    // State
+    let totalVotes: u256 = 0;
+    let proposal: string = "Should we add staking?";
+
+    // Track votes per address
+    map votes: address => u256;
+    map hasVoted: address => bool;
+
+    // Cast a yes vote
+    // Each address can only vote once
+    fn voteYes() mut {
+        guard(hasVoted[msg.sender] == false, "Already voted");
+        hasVoted[msg.sender] = true;
+        votes[msg.sender] = 1;
+        totalVotes += 1;
+        signal Voted(msg.sender, totalVotes);
+    }
+
+    // Get total votes
+    fn getTotal() pub -> u256 {
+        return totalVotes;
+    }
+}`,
+
+  name_registry: `// ============================================
+// NameRegistry Contract
+// ============================================
+// A decentralized name registration system.
+// Users can register a unique name that maps
+// to their address. Useful for human-readable
+// identifiers on-chain.
+//
+// FUNCTIONS:
+// - register(name) - Register a name for your address
+// - getTotal()     - Get total registered names (view)
+// ============================================
+
+forge NameRegistry {
+    // State
+    let totalNames: u256 = 0;
+
+    // Address -> name mapping
+    map names: address => string;
+    // Name -> owner mapping (reverse lookup)
+    map owners: string => address;
+
+    // Register a name for the caller
+    // Maps the caller's address to the name,
+    // and the name back to the caller's address
+    fn register(name: string) mut {
+        names[msg.sender] = name;
+        owners[name] = msg.sender;
+        totalNames += 1;
+        signal NameRegistered(msg.sender, name);
+    }
+
+    // Get total registered names
+    fn getTotal() pub -> u256 {
+        return totalNames;
+    }
 }`
 }

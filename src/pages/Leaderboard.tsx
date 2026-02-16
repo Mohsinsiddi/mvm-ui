@@ -19,9 +19,11 @@ const MEDAL_COLORS = ['text-warning', 'text-mist', 'text-[#CD7F32]']
 
 function formatValue(value: number, category: Category): string {
   if (category === 'balances') {
-    if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`
-    if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K`
-    return value.toLocaleString()
+    const mvm = value / 100_000_000
+    if (mvm >= 1_000_000) return `${(mvm / 1_000_000).toFixed(1)}M`
+    if (mvm >= 1_000) return `${(mvm / 1_000).toFixed(1)}K`
+    if (mvm >= 1) return mvm.toFixed(2)
+    return mvm.toFixed(4)
   }
   return value.toLocaleString()
 }
@@ -31,8 +33,8 @@ export default function Leaderboard() {
   const [activeTab, setActiveTab] = useState<Category>('balances')
 
   const getEntries = (cat: Category): { address: string; value: number }[] => {
-    if (!data) return []
-    const raw = data[cat]
+    if (!data?.leaderboard) return []
+    const raw = data.leaderboard[`top_${cat}`]
     if (!raw || !Array.isArray(raw)) return []
     return raw.map((e: any) => ({
       address: e.address,

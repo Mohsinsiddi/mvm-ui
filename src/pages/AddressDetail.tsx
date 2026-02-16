@@ -264,6 +264,15 @@ export default function AddressDetail() {
           >
             Transactions ({transactions.length})
           </Tabs.Trigger>
+          {isToken && (
+            <Tabs.Trigger
+              value="token_transfers"
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap
+                ${activeTab === 'token_transfers' ? 'bg-cyber text-white' : 'text-mist hover:text-ghost hover:bg-deep'}`}
+            >
+              Token Transfers
+            </Tabs.Trigger>
+          )}
           <Tabs.Trigger
             value="tokens"
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap
@@ -276,6 +285,12 @@ export default function AddressDetail() {
         <Tabs.Content value="transactions" className="mt-4">
           <TransactionsList transactions={transactions} address={address} loading={txsLoading} />
         </Tabs.Content>
+
+        {isToken && (
+          <Tabs.Content value="token_transfers" className="mt-4">
+            <TokenTransfersList transactions={transactions} tokenAddress={address} decimals={tokenInfo?.decimals ?? 8} symbol={tokenInfo?.symbol ?? ''} />
+          </Tabs.Content>
+        )}
 
         <Tabs.Content value="tokens" className="mt-4">
           {isToken ? (
@@ -489,6 +504,93 @@ function TokenHoldersList({ tokenAddress, decimals, symbol }: { tokenAddress: st
             </div>
           </Link>
         ))}
+      </div>
+    </Card>
+  )
+}
+
+function TokenTransfersList({ transactions, tokenAddress, decimals, symbol }: { transactions: any[]; tokenAddress: string; decimals: number; symbol: string }) {
+  // Filter to only token-related transactions (transfer_token, create_token where data.contract matches)
+  const tokenTxs = transactions.filter((tx: any) => {
+    const txType = tx.tx_type?.toLowerCase?.() || ''
+    if (txType === 'create_token' || txType === 'createtoken') return true
+    if (txType === 'transfer_token' || txType === 'transfertoken') {
+      const data = tx.data
+      if (!data) return false
+      const contract = data.TransferToken?.contract || data.contract
+      return contract === tokenAddress
+    }
+    return false
+  })
+
+  if (tokenTxs.length === 0) {
+    return (
+      <Card>
+        <div className="text-center py-8 text-mist">
+          No token transfers yet
+        </div>
+      </Card>
+    )
+  }
+
+  return (
+    <Card>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-mist border-b border-deep">
+              <th className="pb-3 pr-4">Hash</th>
+              <th className="pb-3 pr-4">Type</th>
+              <th className="pb-3 pr-4">From</th>
+              <th className="pb-3 pr-4">To</th>
+              <th className="pb-3 pr-4">Amount</th>
+              <th className="pb-3">Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            {tokenTxs.map((tx: any) => {
+              const data = tx.data || {}
+              const transferTo = data.TransferToken?.to || data.to || '—'
+              const amount = data.TransferToken?.amount || data.amount || 0
+              return (
+                <tr key={tx.hash} className="border-b border-deep/50 hover:bg-deep/30">
+                  <td className="py-3 pr-4">
+                    <Link to={`/tx/${tx.hash}`} className="text-electric hover:text-cyber font-mono">
+                      {formatAddress(tx.hash, 8)}
+                    </Link>
+                  </td>
+                  <td className="py-3 pr-4">
+                    <span className={`px-2 py-0.5 rounded-full text-xs ${
+                      tx.tx_type?.includes('create') ? 'bg-success/20 text-success' : 'bg-neon/20 text-neon'
+                    }`}>
+                      {tx.tx_type?.includes('create') ? 'Create' : 'Transfer'}
+                    </span>
+                  </td>
+                  <td className="py-3 pr-4">
+                    <Link to={`/address/${tx.from}`} className="text-mist hover:text-ghost font-mono">
+                      {formatAddress(tx.from, 4)}
+                    </Link>
+                  </td>
+                  <td className="py-3 pr-4">
+                    {transferTo !== '—' ? (
+                      <Link to={`/address/${transferTo}`} className="text-mist hover:text-ghost font-mono">
+                        {formatAddress(transferTo, 4)}
+                      </Link>
+                    ) : (
+                      <span className="text-mist">—</span>
+                    )}
+                  </td>
+                  <td className="py-3 pr-4 font-mono text-ghost">
+                    {amount > 0 ? `${formatBalance(amount, decimals)} ${symbol}` : '—'}
+                  </td>
+                  <td className="py-3 text-mist">
+                    {formatTimeAgo(tx.timestamp)}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
       </div>
     </Card>
   )

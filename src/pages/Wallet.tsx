@@ -16,8 +16,11 @@ import {
   ArrowDownLeft,
   Coins,
   LogOut,
-  AlertTriangle
+  AlertTriangle,
+  ChevronDown,
+  Loader
 } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { useWalletStore } from '@/store/walletStore'
 import { useBalance, useAddressTransactions, useFaucet, useTokens } from '@/hooks/useApi'
 import { api } from '@/lib/api'
@@ -189,7 +192,7 @@ function WalletConnected({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
           >
-            <SendForm address={address} privateKey={privateKey} balance={balance} onSuccess={refetchBalance} />
+            <SendForm address={address} privateKey={privateKey} balance={balance} tokens={tokensData?.tokens || []} onSuccess={refetchBalance} />
           </motion.div>
         )}
 
@@ -324,7 +327,11 @@ function TokenBalances({ address, tokens }: { address: string; tokens: any[] }) 
       ) : (
         <div className="space-y-3">
           {tokens.map((token) => (
-            <div key={token.address} className="flex items-center justify-between p-3 rounded-lg bg-deep/50">
+            <Link
+              key={token.address}
+              to={`/contracts?tab=tokens&token=${token.address}`}
+              className="flex items-center justify-between p-3 rounded-lg bg-deep/50 hover:bg-deep transition-colors"
+            >
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-neon to-glow flex items-center justify-center text-white font-bold text-sm">
                   {token.symbol.charAt(0)}
@@ -334,12 +341,15 @@ function TokenBalances({ address, tokens }: { address: string; tokens: any[] }) 
                   <div className="text-xs text-mist">{token.name}</div>
                 </div>
               </div>
-              <div className="text-right">
-                <div className="font-mono text-ghost">
-                  {formatBalance(tokenBalances[token.address] || 0, token.decimals)}
+              <div className="flex items-center gap-2">
+                <div className="text-right">
+                  <div className="font-mono text-ghost">
+                    {formatBalance(tokenBalances[token.address] || 0, token.decimals)}
+                  </div>
                 </div>
+                <ExternalLink size={14} className="text-mist" />
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       )}
@@ -465,19 +475,53 @@ function RecentActivity({ transactions, address }: { transactions: any[]; addres
   )
 }
 
-function SendForm({ address, privateKey, balance, onSuccess }: { address: string; privateKey: string | null; balance: number; onSuccess: () => void }) {
+function SendForm({ address, privateKey, balance, tokens, onSuccess }: { address: string; privateKey: string | null; balance: number; tokens: any[]; onSuccess: () => void }) {
   const [to, setTo] = useState('')
   const [amount, setAmount] = useState('')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
+  // Token selection: null = native MVM, string = token address
+  const [selectedAsset, setSelectedAsset] = useState<string | null>(null)
+  const [showDropdown, setShowDropdown] = useState(false)
+  const [tokenBalances, setTokenBalances] = useState<Record<string, number>>({})
+  const [loadingTokenBal, setLoadingTokenBal] = useState(false)
+
+  const selectedToken = tokens.find(t => t.address === selectedAsset)
+
+  // Fetch token balances for the dropdown
+  useEffect(() => {
+    if (tokens.length === 0) return
+    setLoadingTokenBal(true)
+    const fetchAll = async () => {
+      const bals: Record<string, number> = {}
+      for (const t of tokens) {
+        try {
+          const res = await api.getTokenBalance(t.address, address)
+          bals[t.address] = res.balance_raw
+        } catch {
+          bals[t.address] = 0
+        }
+      }
+      setTokenBalances(bals)
+      setLoadingTokenBal(false)
+    }
+    fetchAll()
+  }, [address, tokens])
+
+  const currentBalance = selectedAsset
+    ? tokenBalances[selectedAsset] || 0
+    : balance
+
+  const currentDecimals = selectedToken?.decimals ?? 8
+  const currentSymbol = selectedToken?.symbol ?? 'MVM'
+
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     setSuccess('')
 
-    // Validate
     if (!privateKey) {
       setError('Private key not available. Please reconnect wallet.')
       return
@@ -494,29 +538,39 @@ function SendForm({ address, privateKey, balance, onSuccess }: { address: string
       return
     }
 
-    // Balance is in raw units (8 decimals), convert to human-readable for comparison
-    const balanceMVM = balance / 1e8
-    if (amountNum > balanceMVM) {
-      setError(`Insufficient balance: you have ${balanceMVM.toFixed(4)} MVM`)
+    const balanceHuman = currentBalance / Math.pow(10, currentDecimals)
+    if (amountNum > balanceHuman) {
+      setError(`Insufficient ${currentSymbol} balance: you have ${balanceHuman.toFixed(4)}`)
+      return
+    }
+
+    // Always need MVM for gas
+    if (balance < 100_000_000) {
+      setError('Insufficient MVM for gas. Need at least 1.0 MVM. Use the faucet first.')
       return
     }
 
     setSending(true)
     try {
-      // Get nonce
-      const { pending_nonce } = await api.getPendingNonce(address)
-      
-      // Sign and submit transaction via backend API
-      // Backend multiplies value by 1e8 internally, so send human-readable amount
-      const result = await api.signAndSubmit(
-        privateKey,
-        'transfer',
-        address,
-        to,
-        amountNum,
-        pending_nonce
-      )
-      
+      let result: any
+
+      if (selectedAsset && selectedToken) {
+        // Token transfer
+        const rawAmount = Math.floor(amountNum * Math.pow(10, selectedToken.decimals))
+        result = await api.transferToken(privateKey, address, selectedAsset, to, rawAmount)
+      } else {
+        // Native MVM transfer
+        const { pending_nonce } = await api.getPendingNonce(address)
+        result = await api.signAndSubmit(
+          privateKey,
+          'transfer',
+          address,
+          to,
+          amountNum,
+          pending_nonce
+        )
+      }
+
       if (result.success || result.hash) {
         setSuccess(`Transaction sent! Hash: ${(result.hash || result.tx_hash || '').slice(0, 16)}...`)
         setTo('')
@@ -533,18 +587,92 @@ function SendForm({ address, privateKey, balance, onSuccess }: { address: string
   }
 
   const setMaxAmount = () => {
-    const maxAmount = Math.max(0, (balance / 1e8) - 1) // Leave 1 MVM for gas
-    setAmount(maxAmount.toFixed(4))
+    if (selectedAsset) {
+      const max = currentBalance / Math.pow(10, currentDecimals)
+      setAmount(max.toFixed(4))
+    } else {
+      const maxAmount = Math.max(0, (balance / 1e8) - 1) // Leave 1 MVM for gas
+      setAmount(maxAmount.toFixed(4))
+    }
   }
 
   return (
     <Card className="max-w-lg mx-auto">
       <h3 className="text-lg font-semibold text-ghost mb-4 flex items-center gap-2">
         <Send size={20} className="text-cyber" />
-        Send MVM
+        Send {currentSymbol}
       </h3>
 
       <form onSubmit={handleSend} className="space-y-4">
+        {/* Asset Selector */}
+        <div>
+          <label className="block text-sm text-mist mb-2">Asset</label>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowDropdown(!showDropdown)}
+              className="input w-full flex items-center justify-between text-left"
+            >
+              <div className="flex items-center gap-2">
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                  selectedAsset ? 'bg-gradient-to-br from-neon to-glow text-white' : 'bg-gradient-to-br from-cyber to-electric text-white'
+                }`}>
+                  {selectedToken ? selectedToken.symbol.charAt(0) : 'M'}
+                </div>
+                <span className="text-ghost font-medium">{currentSymbol}</span>
+                <span className="text-mist text-sm">
+                  ({formatBalance(currentBalance, currentDecimals)})
+                </span>
+              </div>
+              <ChevronDown size={16} className={`text-mist transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
+            </button>
+
+            {showDropdown && (
+              <div className="absolute z-20 mt-1 w-full bg-abyss border border-deep rounded-lg shadow-xl overflow-hidden">
+                {/* Native MVM */}
+                <button
+                  type="button"
+                  onClick={() => { setSelectedAsset(null); setShowDropdown(false); setAmount('') }}
+                  className={`w-full flex items-center justify-between p-3 text-left hover:bg-deep transition-colors ${
+                    !selectedAsset ? 'bg-deep' : ''
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-cyber to-electric flex items-center justify-center text-white text-xs font-bold">M</div>
+                    <span className="text-ghost font-medium">MVM</span>
+                  </div>
+                  <span className="font-mono text-sm text-mist">{formatBalance(balance)}</span>
+                </button>
+
+                {/* Tokens */}
+                {tokens.map(t => (
+                  <button
+                    key={t.address}
+                    type="button"
+                    onClick={() => { setSelectedAsset(t.address); setShowDropdown(false); setAmount('') }}
+                    className={`w-full flex items-center justify-between p-3 text-left hover:bg-deep transition-colors ${
+                      selectedAsset === t.address ? 'bg-deep' : ''
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-neon to-glow flex items-center justify-center text-white text-xs font-bold">
+                        {t.symbol.charAt(0)}
+                      </div>
+                      <div>
+                        <span className="text-ghost font-medium">{t.symbol}</span>
+                        <span className="text-mist text-xs ml-1">{t.name}</span>
+                      </div>
+                    </div>
+                    <span className="font-mono text-sm text-mist">
+                      {loadingTokenBal ? '...' : formatBalance(tokenBalances[t.address] || 0, t.decimals)}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
         <div>
           <label className="block text-sm text-mist mb-2">Recipient Address</label>
           <input
@@ -577,7 +705,7 @@ function SendForm({ address, privateKey, balance, onSuccess }: { address: string
             </button>
           </div>
           <p className="text-xs text-mist mt-1">
-            Available: {formatBalance(balance)} MVM
+            Available: {formatBalance(currentBalance, currentDecimals)} {currentSymbol}
           </p>
         </div>
 
@@ -600,13 +728,13 @@ function SendForm({ address, privateKey, balance, onSuccess }: { address: string
         >
           {sending ? (
             <>
-              <LoadingSpinner size="sm" />
+              <Loader size={18} className="animate-spin" />
               Sending...
             </>
           ) : (
             <>
               <Send size={18} />
-              Send Transaction
+              Send {currentSymbol}
             </>
           )}
         </button>
