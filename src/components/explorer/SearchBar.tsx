@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, X, ArrowRight } from 'lucide-react'
+import { Search, X } from 'lucide-react'
 import { isValidAddress } from '@/lib/crypto'
 
 interface SearchBarProps {
