@@ -14,6 +14,8 @@ import WalletLab from '@/pages/WalletLab'
 import VanityGenerator from '@/pages/VanityGenerator'
 import TokenCreator from '@/pages/TokenCreator'
 import Leaderboard from '@/pages/Leaderboard'
+import Docs from '@/pages/Docs'
+import ApiDocs from '@/pages/ApiDocs'
 import WalletModal from '@/components/wallet/WalletModal'
 import { useWalletStore } from '@/store/walletStore'
 
@@ -38,6 +40,8 @@ export default function App() {
           <Route path="/learn/vanity" element={<VanityGenerator />} />
           <Route path="/tokens/create" element={<TokenCreator />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
+          <Route path="/docs" element={<Docs />} />
+          <Route path="/docs/api" element={<ApiDocs />} />
         </Routes>
       </Layout>
       <WalletModal open={showWalletModal} onClose={() => setShowWalletModal(false)} />

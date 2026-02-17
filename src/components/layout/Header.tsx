@@ -16,7 +16,9 @@ import {
   ChevronDown,
   Coins,
   Sparkles,
-  KeyRound
+  KeyRound,
+  BookOpen,
+  Zap
 } from 'lucide-react'
 import Logo from './Logo'
 import Modal from '@/components/common/Modal'
@@ -51,6 +53,8 @@ const desktopNav = [
       { path: '/learn/wallet', label: 'Wallet Lab', icon: KeyRound, desc: 'How wallets work' },
       { path: '/learn/vanity', label: 'Vanity Generator', icon: Sparkles, desc: 'Custom address prefix' },
       { path: '/tokens/create', label: 'Create Token', icon: Coins, desc: 'Deploy MVM-20 token' },
+      { path: '/docs', label: 'Docs', icon: BookOpen, desc: 'Features & guides' },
+      { path: '/docs/api', label: 'API Reference', icon: Zap, desc: 'Interactive API docs' },
     ]
   },
 ]
@@ -64,12 +68,14 @@ const mobileNav = [
   { path: '/node', label: 'Node', icon: Cpu },
   { path: '/leaderboard', label: 'Leaderboard', icon: Trophy },
   {
-    label: 'Learn',
+    label: 'Learn & Docs',
     icon: GraduationCap,
     children: [
       { path: '/learn/wallet', label: 'Wallet Lab' },
       { path: '/learn/vanity', label: 'Vanity Generator' },
       { path: '/tokens/create', label: 'Create Token' },
+      { path: '/docs', label: 'Docs' },
+      { path: '/docs/api', label: 'API Reference' },
     ]
   },
 ]
