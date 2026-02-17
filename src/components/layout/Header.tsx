@@ -19,6 +19,7 @@ import {
   KeyRound
 } from 'lucide-react'
 import Logo from './Logo'
+import Modal from '@/components/common/Modal'
 import SearchBar from '@/components/explorer/SearchBar'
 import { useWalletStore } from '@/store/walletStore'
 import { formatAddress } from '@/lib/format'
@@ -281,27 +282,9 @@ export default function Header() {
       </AnimatePresence>
 
       {/* Search Modal */}
-      <AnimatePresence>
-        {searchOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-void/90 backdrop-blur-sm flex items-start justify-center pt-20 px-4"
-            onClick={() => setSearchOpen(false)}
-          >
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="w-full max-w-2xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <SearchBar onSearch={() => setSearchOpen(false)} autoFocus />
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <Modal open={searchOpen} onClose={() => setSearchOpen(false)} title="Search" maxWidth="max-w-xl">
+        <SearchBar onSearch={() => setSearchOpen(false)} autoFocus />
+      </Modal>
     </header>
   )
 }

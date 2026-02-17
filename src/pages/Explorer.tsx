@@ -26,7 +26,7 @@ export default function Explorer() {
       </div>
 
       {/* Search */}
-      <SearchBar />
+      <SearchBar inline />
 
       {/* Tabs */}
       <Tabs.Root value={activeTab} onValueChange={setActiveTab}>

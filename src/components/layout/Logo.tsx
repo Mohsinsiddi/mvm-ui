@@ -63,7 +63,7 @@ export default function Logo({ size = 'md', showText = true }: LogoProps) {
           >
             Mohsin
           </motion.span>
-          <span className={`${s.sub} text-mist -mt-1 hidden sm:block tracking-widest uppercase`}>Explorer</span>
+          <span className={`${s.sub} text-mist -mt-1 tracking-widest uppercase`}>Explorer</span>
         </div>
       )}
     </Link>

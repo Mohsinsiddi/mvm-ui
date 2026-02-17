@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import * as Dialog from '@radix-ui/react-dialog'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Plus, Download, Eye, EyeOff, AlertTriangle, Check, Loader } from 'lucide-react'
+import { Plus, Download, Eye, EyeOff, AlertTriangle, Check, Loader } from 'lucide-react'
+import Modal from '@/components/common/Modal'
 import { useWalletStore } from '@/store/walletStore'
 import { createWallet, isValidPrivateKey, getPublicKey, getAddress } from '@/lib/crypto'
 import { useCreateWallet } from '@/hooks/useApi'
@@ -105,30 +105,13 @@ export default function WalletModal({ open, onClose }: WalletModalProps) {
     onClose()
   }
 
+  const modalTitle = mode === 'select' ? 'Connect Wallet'
+    : mode === 'creating' ? 'Creating Wallet...'
+    : mode === 'create' ? 'New Wallet Created'
+    : 'Import Wallet'
+
   return (
-    <Dialog.Root open={open} onOpenChange={handleClose}>
-      <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-void/80 backdrop-blur-sm z-50" />
-        <Dialog.Content className="fixed z-50 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-2rem)] max-w-md">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="card border-cyber/30"
-          >
-            <div className="flex items-center justify-between mb-4 md:mb-6">
-              <Dialog.Title className="text-lg md:text-xl font-bold text-ghost">
-                {mode === 'select' && 'Connect Wallet'}
-                {mode === 'creating' && 'Creating Wallet...'}
-                {mode === 'create' && 'New Wallet Created'}
-                {mode === 'import' && 'Import Wallet'}
-              </Dialog.Title>
-              <Dialog.Close asChild>
-                <button className="p-2 rounded-lg hover:bg-deep text-mist hover:text-ghost transition-colors">
-                  <X size={20} />
-                </button>
-              </Dialog.Close>
-            </div>
+    <Modal open={open} onClose={handleClose} title={modalTitle}>
 
             <AnimatePresence mode="wait">
               {mode === 'creating' && (
@@ -296,9 +279,6 @@ export default function WalletModal({ open, onClose }: WalletModalProps) {
                 </motion.div>
               )}
             </AnimatePresence>
-          </motion.div>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+    </Modal>
   )
 }
