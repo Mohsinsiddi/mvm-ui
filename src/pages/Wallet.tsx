@@ -288,27 +288,23 @@ function TokenBalances({ address, tokens }: { address: string; tokens: any[] }) 
   const [tokenBalances, setTokenBalances] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
 
-  // Fetch token balances
+  // Fetch all token holdings in a single API call
   useEffect(() => {
     const fetchBalances = async () => {
-      const balances: Record<string, number> = {}
-      for (const token of tokens) {
-        try {
-          const res = await api.getTokenBalance(token.address, address)
-          balances[token.address] = res.balance_raw
-        } catch {
-          balances[token.address] = 0
+      try {
+        const res = await api.getTokenHoldings(address)
+        const balances: Record<string, number> = {}
+        for (const h of res.holdings) {
+          balances[h.contract] = h.balance_raw
         }
+        setTokenBalances(balances)
+      } catch {
+        setTokenBalances({})
       }
-      setTokenBalances(balances)
       setLoading(false)
     }
-    if (tokens.length > 0) {
-      fetchBalances()
-    } else {
-      setLoading(false)
-    }
-  }, [address, tokens])
+    fetchBalances()
+  }, [address])
 
   return (
     <Card>
@@ -493,25 +489,24 @@ function SendForm({ address, privateKey, balance, tokens, onSuccess }: { address
 
   const selectedToken = tokens.find(t => t.address === selectedAsset)
 
-  // Fetch token balances for the dropdown
+  // Fetch all token balances in a single API call
   useEffect(() => {
-    if (tokens.length === 0) return
     setLoadingTokenBal(true)
     const fetchAll = async () => {
-      const bals: Record<string, number> = {}
-      for (const t of tokens) {
-        try {
-          const res = await api.getTokenBalance(t.address, address)
-          bals[t.address] = res.balance_raw
-        } catch {
-          bals[t.address] = 0
+      try {
+        const res = await api.getTokenHoldings(address)
+        const bals: Record<string, number> = {}
+        for (const h of res.holdings) {
+          bals[h.contract] = h.balance_raw
         }
+        setTokenBalances(bals)
+      } catch {
+        setTokenBalances({})
       }
-      setTokenBalances(bals)
       setLoadingTokenBal(false)
     }
     fetchAll()
-  }, [address, tokens])
+  }, [address])
 
   const currentBalance = selectedAsset
     ? tokenBalances[selectedAsset] || 0
@@ -647,8 +642,8 @@ function SendForm({ address, privateKey, balance, tokens, onSuccess }: { address
                   <span className="font-mono text-sm text-mist">{formatBalance(balance)}</span>
                 </button>
 
-                {/* Tokens */}
-                {tokens.map(t => (
+                {/* Tokens (only those with balance) */}
+                {tokens.filter(t => (tokenBalances[t.address] || 0) > 0).map(t => (
                   <button
                     key={t.address}
                     type="button"

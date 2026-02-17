@@ -155,6 +155,11 @@ class ApiClient {
     return { balance: res.balance_raw ?? 0, balance_raw: res.balance_raw ?? 0 }
   }
 
+  /** All token holdings for an address in a single call */
+  async getTokenHoldings(address: string): Promise<{ holdings: { contract: string; name: string; symbol: string; balance: string; balance_raw: number }[]; count: number }> {
+    return this.fetch(`/tokens/holder/${address}`)
+  }
+
   // ==================== CONTRACTS ====================
 
   async getContracts(): Promise<{ contracts: Contract[] }> {

@@ -15,10 +15,10 @@ export function formatBalance(balance: number, decimals = 8): string {
   if (value === 0) return '0'
   if (value < 0.0001) return '< 0.0001'
   if (value < 1) return value.toFixed(4)
-  if (value < 1000) return value.toFixed(2)
-  if (value < 1000000) return `${(value / 1000).toFixed(2)}K`
-  if (value < 1000000000) return `${(value / 1000000).toFixed(2)}M`
-  return `${(value / 1000000000).toFixed(2)}B`
+  if (value < 10_000) return value.toLocaleString('en-US', { maximumFractionDigits: 2 })
+  if (value < 1_000_000) return `${(value / 1_000).toFixed(2)}K`
+  if (value < 1_000_000_000) return `${(value / 1_000_000).toFixed(2)}M`
+  return `${(value / 1_000_000_000).toFixed(2)}B`
 }
 
 export function formatNumber(num: number): string {
