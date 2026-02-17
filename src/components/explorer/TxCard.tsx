@@ -32,10 +32,10 @@ export default function TxCard({ tx, isNew }: TxCardProps) {
             <span className="text-2xl">{txType.icon}</span>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-mono text-sm text-electric">{formatHash(tx.hash)}</span>
+                <span className="font-mono text-xs md:text-sm text-electric">{formatHash(tx.hash)}</span>
                 <span className={statusBadge}>{tx.status}</span>
               </div>
-              <div className="flex items-center gap-2 text-sm text-mist mt-1 flex-wrap">
+              <div className="flex items-center gap-2 text-xs md:text-sm text-mist mt-1 flex-wrap">
                 <span className="font-mono">{formatAddress(tx.from, 4)}</span>
                 <ArrowRight size={14} />
                 <span className="font-mono">{tx.to ? formatAddress(tx.to, 4) : 'Contract'}</span>

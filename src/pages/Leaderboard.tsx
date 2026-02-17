@@ -62,7 +62,7 @@ export default function Leaderboard() {
           <button
             key={cat.key}
             onClick={() => setActiveTab(cat.key)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+            className={`flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium whitespace-nowrap transition-colors ${
               activeTab === cat.key
                 ? 'bg-cyber/20 text-cyber border border-cyber/30'
                 : 'bg-deep text-mist hover:text-ghost'
@@ -125,8 +125,8 @@ export default function Leaderboard() {
                     to={`/address/${entry.address}`}
                     className="flex-1 min-w-0"
                   >
-                    <span className="font-mono text-sm text-electric hover:text-ice transition-colors truncate block">
-                      {formatAddress(entry.address, 10)}
+                    <span className="font-mono text-xs md:text-sm text-electric hover:text-ice transition-colors truncate block">
+                      {formatAddress(entry.address, 8)}
                     </span>
                   </Link>
 

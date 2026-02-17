@@ -35,7 +35,7 @@ export default function BlockCard({ block, isNew }: BlockCardProps) {
                 <span className="font-mono font-medium text-ghost">#{block.height}</span>
                 {isNew && <span className="badge-success">New</span>}
               </div>
-              <div className="flex items-center gap-2 text-sm text-mist mt-1">
+              <div className="flex items-center gap-2 text-xs md:text-sm text-mist mt-1">
                 <Hash size={12} />
                 <span className="font-mono">{formatHash(blockHash)}</span>
               </div>

@@ -10,3 +10,4 @@
 *.swp   
 
 /test-results
+/e2e/screenshots

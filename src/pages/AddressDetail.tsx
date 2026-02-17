@@ -132,17 +132,17 @@ export default function AddressDetail() {
       >
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-4">
-            <div className={`p-4 rounded-xl ${
+            <div className={`p-3 md:p-4 rounded-xl ${
               isContract ? 'bg-gradient-to-br from-neon to-glow' :
               isToken ? 'bg-gradient-to-br from-warning to-orange-500' :
               'bg-gradient-to-br from-cyber to-neon'
             }`}>
               {isContract ? (
-                <FileCode size={32} className="text-white" />
+                <FileCode className="text-white w-6 h-6 md:w-8 md:h-8" />
               ) : isToken ? (
-                <Coins size={32} className="text-white" />
+                <Coins className="text-white w-6 h-6 md:w-8 md:h-8" />
               ) : (
-                <Wallet size={32} className="text-white" />
+                <Wallet className="text-white w-6 h-6 md:w-8 md:h-8" />
               )}
             </div>
             <div>
@@ -159,10 +159,12 @@ export default function AddressDetail() {
               </div>
               <button
                 onClick={handleCopy}
-                className="flex items-center gap-2 text-sm text-mist hover:text-electric transition-colors mt-1"
+                className="flex items-center gap-2 text-xs md:text-sm text-mist hover:text-electric transition-colors mt-1 max-w-full"
               >
-                <span className="font-mono break-all">{address}</span>
-                {copied ? <Check size={14} className="text-success" /> : <Copy size={14} />}
+                <span className="font-mono truncate">{address}</span>
+                <span className="flex-shrink-0">
+                  {copied ? <Check size={14} className="text-success" /> : <Copy size={14} />}
+                </span>
               </button>
             </div>
           </div>
@@ -304,12 +306,12 @@ export default function AddressDetail() {
 // Sub Components
 function StatCard({ label, value, icon: Icon }: { label: string; value: string; icon: any }) {
   return (
-    <div className="p-4 rounded-lg bg-deep/50">
-      <div className="flex items-center gap-2 text-mist text-sm mb-1">
+    <div className="p-3 md:p-4 rounded-lg bg-deep/50">
+      <div className="flex items-center gap-2 text-mist text-xs md:text-sm mb-1">
         <Icon size={14} />
         {label}
       </div>
-      <div className="text-lg font-semibold text-ghost truncate">{value}</div>
+      <div className="text-sm md:text-lg font-semibold text-ghost truncate">{value}</div>
     </div>
   )
 }

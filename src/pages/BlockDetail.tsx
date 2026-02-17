@@ -11,7 +11,7 @@ import {
   ChevronRight
 } from 'lucide-react'
 import { useBlock } from '@/hooks/useApi'
-import { formatTime, formatTimeAgo, formatHash } from '@/lib/format'
+import { formatTime, formatTimeAgo } from '@/lib/format'
 import TxCard from '@/components/explorer/TxCard'
 import LoadingSpinner from '@/components/common/LoadingSpinner'
 import CopyButton from '@/components/common/CopyButton'
@@ -84,22 +84,22 @@ export default function BlockDetail() {
         animate={{ opacity: 1, y: 0 }}
         className="card"
       >
-        <div className="flex items-center gap-4 mb-6">
-          <div className="p-4 rounded-xl bg-gradient-to-br from-cyber to-neon">
-            <Box size={32} className="text-white" />
+        <div className="flex items-center gap-3 md:gap-4 mb-6">
+          <div className="p-3 md:p-4 rounded-xl bg-gradient-to-br from-cyber to-neon flex-shrink-0">
+            <Box className="text-white w-6 h-6 md:w-8 md:h-8" />
           </div>
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-ghost">
+          <div className="min-w-0">
+            <h1 className="text-xl md:text-3xl font-bold text-ghost">
               Block #{block.height}
             </h1>
-            <p className="text-mist mt-1">
+            <p className="text-mist text-xs md:text-sm mt-1">
               {formatTime(block.timestamp)}
             </p>
           </div>
         </div>
 
         {/* Block Info Grid */}
-        <div className="grid md:grid-cols-2 gap-4">
+        <div className="grid md:grid-cols-2 gap-3 md:gap-4">
           <InfoRow 
             icon={Hash} 
             label="Block Hash" 
@@ -205,25 +205,24 @@ function InfoRow({
   link?: string
 }) {
   const valueStr = String(value)
-  const displayValue = mono && valueStr.length > 20 ? formatHash(valueStr, 12) : valueStr
 
   return (
-    <div className="p-4 rounded-lg bg-deep/50">
-      <div className="flex items-center gap-2 text-mist text-sm mb-1">
-        <Icon size={14} />
+    <div className="p-3 md:p-4 rounded-lg bg-deep/50 min-w-0 overflow-hidden">
+      <div className="flex items-center gap-2 text-mist text-xs md:text-sm mb-1">
+        <Icon size={14} className="flex-shrink-0" />
         {label}
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5 min-w-0">
         {link ? (
-          <Link 
+          <Link
             to={link}
-            className={`text-electric hover:text-ice transition-colors ${mono ? 'font-mono text-sm' : ''}`}
+            className={`text-electric hover:text-ice transition-colors truncate ${mono ? 'font-mono text-xs md:text-sm' : 'text-sm'}`}
           >
-            {displayValue}
+            {valueStr}
           </Link>
         ) : (
-          <span className={`text-ghost ${mono ? 'font-mono text-sm break-all' : ''}`}>
-            {displayValue}
+          <span className={`text-ghost truncate ${mono ? 'font-mono text-xs md:text-sm' : 'text-sm'}`}>
+            {valueStr}
           </span>
         )}
         {copyable && <CopyButton text={valueStr} />}

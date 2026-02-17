@@ -130,7 +130,7 @@ export default function VanityGenerator() {
 
             <div className="space-y-4">
               {/* Preview */}
-              <div className="bg-void rounded-lg p-4 font-mono text-sm">
+              <div className="bg-void rounded-lg p-4 font-mono text-sm overflow-hidden text-ellipsis whitespace-nowrap">
                 <span className="text-mist">mvm11</span>
                 <span className="text-electric">{prefix || '...'}</span>
                 <span className="text-shadow">{'x'.repeat(Math.max(0, 37 - prefix.length))}</span>
@@ -141,7 +141,7 @@ export default function VanityGenerator() {
                 <label className="block text-sm text-mist mb-1">
                   Prefix after mvm11 (bech32 chars only — no b, i, o, 1)
                 </label>
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <input
                     className="input flex-1"
                     placeholder="e.g. ace"
@@ -153,31 +153,33 @@ export default function VanityGenerator() {
                     maxLength={8}
                     disabled={running}
                   />
-                  <div className="flex items-center gap-1.5">
-                    <label className="text-xs text-mist whitespace-nowrap">Find</label>
-                    <input
-                      type="number"
-                      className="input w-16 text-center"
-                      value={targetCount}
-                      onChange={(e) => setTargetCount(Math.max(1, Math.min(100, parseInt(e.target.value) || 1)))}
-                      min={1}
-                      max={100}
-                      disabled={running}
-                    />
+                  <div className="flex gap-2">
+                    <div className="flex items-center gap-1.5">
+                      <label className="text-xs text-mist whitespace-nowrap">Find</label>
+                      <input
+                        type="number"
+                        className="input w-16 text-center"
+                        value={targetCount}
+                        onChange={(e) => setTargetCount(Math.max(1, Math.min(100, parseInt(e.target.value) || 1)))}
+                        min={1}
+                        max={100}
+                        disabled={running}
+                      />
+                    </div>
+                    {running ? (
+                      <button onClick={stop} className="btn-secondary flex items-center gap-2 flex-1 sm:flex-none justify-center">
+                        <Square size={14} /> Stop
+                      </button>
+                    ) : (
+                      <button
+                        onClick={start}
+                        disabled={!prefix}
+                        className="btn-primary flex items-center gap-2 flex-1 sm:flex-none justify-center"
+                      >
+                        <Play size={14} /> Start
+                      </button>
+                    )}
                   </div>
-                  {running ? (
-                    <button onClick={stop} className="btn-secondary flex items-center gap-2">
-                      <Square size={14} /> Stop
-                    </button>
-                  ) : (
-                    <button
-                      onClick={start}
-                      disabled={!prefix}
-                      className="btn-primary flex items-center gap-2"
-                    >
-                      <Play size={14} /> Start
-                    </button>
-                  )}
                 </div>
               </div>
 
@@ -188,18 +190,18 @@ export default function VanityGenerator() {
 
               {/* Stats */}
               {(running || attempts > 0) && (
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="bg-void rounded-lg p-3 text-center">
+                <div className="grid grid-cols-3 gap-2 md:gap-3">
+                  <div className="bg-void rounded-lg p-2 md:p-3 text-center">
                     <p className="text-xs text-mist">Attempts</p>
-                    <p className="text-lg font-bold text-ghost">{attempts.toLocaleString()}</p>
+                    <p className="text-sm md:text-lg font-bold text-ghost">{attempts.toLocaleString()}</p>
                   </div>
-                  <div className="bg-void rounded-lg p-3 text-center">
+                  <div className="bg-void rounded-lg p-2 md:p-3 text-center">
                     <p className="text-xs text-mist">Speed</p>
-                    <p className="text-lg font-bold text-ghost">{speed.toLocaleString()}/s</p>
+                    <p className="text-sm md:text-lg font-bold text-ghost">{speed.toLocaleString()}/s</p>
                   </div>
-                  <div className="bg-void rounded-lg p-3 text-center">
+                  <div className="bg-void rounded-lg p-2 md:p-3 text-center">
                     <p className="text-xs text-mist">Found</p>
-                    <p className="text-lg font-bold text-success">{matches.length} <span className="text-sm text-mist font-normal">/ {targetCount}</span></p>
+                    <p className="text-sm md:text-lg font-bold text-success">{matches.length} <span className="text-xs md:text-sm text-mist font-normal">/ {targetCount}</span></p>
                   </div>
                 </div>
               )}

@@ -100,7 +100,7 @@ export default function Dashboard() {
         animate={{ opacity: 1, y: 0 }}
         className="text-center md:text-left py-8 md:py-12"
       >
-        <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-ghost mb-4">
+        <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold text-ghost mb-4">
           Mohsin <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyber via-neon to-electric">Virtual Machine</span>
         </h1>
         <p className="text-lg md:text-xl text-mist max-w-2xl mb-6">
@@ -211,7 +211,7 @@ export default function Dashboard() {
               <pre className="font-mono text-sm leading-relaxed">
                 {SAMPLE_CODE.split('\n').map((line, i) => (
                   <div key={i} className="flex">
-                    <span className="text-[#505070] w-8 text-right mr-4 select-none flex-shrink-0">{i + 1}</span>
+                    <span className="text-[#505070] w-6 md:w-8 text-right mr-2 md:mr-4 select-none flex-shrink-0">{i + 1}</span>
                     <MoshLine line={line} />
                   </div>
                 ))}
@@ -228,11 +228,11 @@ export default function Dashboard() {
         transition={{ delay: 0.4 }}
       >
         <h2 className="text-2xl font-bold text-ghost mb-6 text-center">Try It Out</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
           {TRY_IT_CARDS.map((card) => (
-            <Link key={card.to} to={card.to} className="card-hover text-center py-6 group">
+            <Link key={card.to} to={card.to} className="card-hover text-center py-4 md:py-6 group">
               <span className={`${card.color} block mx-auto mb-2`}>{card.icon}</span>
-              <div className="font-medium text-ghost group-hover:text-white transition-colors">{card.label}</div>
+              <div className="font-medium text-ghost group-hover:text-white transition-colors text-sm md:text-base">{card.label}</div>
               <div className="text-xs text-mist mt-1">{card.desc}</div>
             </Link>
           ))}
@@ -246,21 +246,21 @@ export default function Dashboard() {
         transition={{ delay: 0.5 }}
         className="grid grid-cols-2 md:grid-cols-4 gap-4"
       >
-        <Link to="/wallet" className="card-hover text-center py-6">
-          <Wallet size={32} className="mx-auto text-cyber mb-2" />
-          <div className="font-medium text-ghost">My Wallet</div>
+        <Link to="/wallet" className="card-hover text-center py-4 md:py-6">
+          <Wallet className="mx-auto text-cyber mb-2 w-6 h-6 md:w-8 md:h-8" />
+          <div className="font-medium text-ghost text-sm md:text-base">My Wallet</div>
         </Link>
-        <Link to="/explorer" className="card-hover text-center py-6">
-          <Box size={32} className="mx-auto text-neon mb-2" />
-          <div className="font-medium text-ghost">Explorer</div>
+        <Link to="/explorer" className="card-hover text-center py-4 md:py-6">
+          <Box className="mx-auto text-neon mb-2 w-6 h-6 md:w-8 md:h-8" />
+          <div className="font-medium text-ghost text-sm md:text-base">Explorer</div>
         </Link>
-        <Link to="/contracts" className="card-hover text-center py-6">
-          <FileCode size={32} className="mx-auto text-electric mb-2" />
-          <div className="font-medium text-ghost">Contracts</div>
+        <Link to="/contracts" className="card-hover text-center py-4 md:py-6">
+          <FileCode className="mx-auto text-electric mb-2 w-6 h-6 md:w-8 md:h-8" />
+          <div className="font-medium text-ghost text-sm md:text-base">Contracts</div>
         </Link>
-        <Link to="/leaderboard" className="card-hover text-center py-6">
-          <Activity size={32} className="mx-auto text-glow mb-2" />
-          <div className="font-medium text-ghost">Leaderboard</div>
+        <Link to="/leaderboard" className="card-hover text-center py-4 md:py-6">
+          <Activity className="mx-auto text-glow mb-2 w-6 h-6 md:w-8 md:h-8" />
+          <div className="font-medium text-ghost text-sm md:text-base">Leaderboard</div>
         </Link>
       </motion.div>
     </div>

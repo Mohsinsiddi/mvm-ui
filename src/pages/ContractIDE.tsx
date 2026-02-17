@@ -93,40 +93,40 @@ export default function ContractIDE() {
 
       {/* Main Tabs */}
       <Tabs.Root value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
-        <Tabs.List className="flex gap-1 p-1 bg-abyss rounded-lg w-fit">
+        <Tabs.List className="flex gap-1 p-1 bg-abyss rounded-lg overflow-x-auto">
           <Tabs.Trigger
             value="contracts"
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2
+            className={`px-3 md:px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 whitespace-nowrap
               ${activeTab === 'contracts' ? 'bg-cyber text-white' : 'text-mist hover:text-ghost hover:bg-deep'}`}
           >
             <FileCode size={16} />
-            My Contracts
+            <span className="hidden sm:inline">My</span> Contracts
             {userContracts.length > 0 && (
-              <span className="ml-1 px-2 py-0.5 text-xs rounded-full bg-deep">
+              <span className="ml-1 px-1.5 py-0.5 text-xs rounded-full bg-deep hidden sm:inline">
                 {userContracts.length}
               </span>
             )}
           </Tabs.Trigger>
           <Tabs.Trigger
             value="tokens"
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2
+            className={`px-3 md:px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 whitespace-nowrap
               ${activeTab === 'tokens' ? 'bg-cyber text-white' : 'text-mist hover:text-ghost hover:bg-deep'}`}
           >
             <Coins size={16} />
-            My Tokens
+            <span className="hidden sm:inline">My</span> Tokens
             {userTokens.length > 0 && (
-              <span className="ml-1 px-2 py-0.5 text-xs rounded-full bg-deep">
+              <span className="ml-1 px-1.5 py-0.5 text-xs rounded-full bg-deep hidden sm:inline">
                 {userTokens.length}
               </span>
             )}
           </Tabs.Trigger>
           <Tabs.Trigger
             value="deploy"
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2
+            className={`px-3 md:px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 whitespace-nowrap
               ${activeTab === 'deploy' ? 'bg-cyber text-white' : 'text-mist hover:text-ghost hover:bg-deep'}`}
           >
             <Upload size={16} />
-            Deploy New
+            Deploy<span className="hidden sm:inline"> New</span>
           </Tabs.Trigger>
         </Tabs.List>
 
@@ -419,12 +419,12 @@ function ContractDetail({
               </div>
               <div>
                 <h2 className="text-xl font-bold text-ghost">{contract?.name || 'Contract'}</h2>
-                <div className="flex items-center gap-2 mt-1">
-                  <code className="text-sm text-electric font-mono">{address}</code>
-                  <button onClick={handleCopy} className="text-mist hover:text-ghost transition-colors">
+                <div className="flex items-center gap-2 mt-1 min-w-0">
+                  <code className="text-xs sm:text-sm text-electric font-mono truncate">{address}</code>
+                  <button onClick={handleCopy} className="text-mist hover:text-ghost transition-colors flex-shrink-0">
                     {copied ? <Check size={14} className="text-success" /> : <Copy size={14} />}
                   </button>
-                  <Link to={`/address/${address}`} className="text-mist hover:text-cyber transition-colors">
+                  <Link to={`/address/${address}`} className="text-mist hover:text-cyber transition-colors flex-shrink-0">
                     <ExternalLink size={14} />
                   </Link>
                 </div>
@@ -433,18 +433,18 @@ function ContractDetail({
           </div>
           
           {/* Stats */}
-          <div className="flex gap-4 text-sm">
-            <div className="text-center px-4 py-2 bg-deep rounded-lg">
-              <div className="text-mist">Functions</div>
-              <div className="text-lg font-bold text-ghost">{mbi?.functions?.length || 0}</div>
+          <div className="flex gap-2 md:gap-4 text-sm">
+            <div className="text-center px-3 md:px-4 py-2 bg-deep rounded-lg">
+              <div className="text-xs md:text-sm text-mist">Functions</div>
+              <div className="text-base md:text-lg font-bold text-ghost">{mbi?.functions?.length || 0}</div>
             </div>
-            <div className="text-center px-4 py-2 bg-deep rounded-lg">
-              <div className="text-mist">Variables</div>
-              <div className="text-lg font-bold text-ghost">{mbi?.variables?.length || 0}</div>
+            <div className="text-center px-3 md:px-4 py-2 bg-deep rounded-lg">
+              <div className="text-xs md:text-sm text-mist">Variables</div>
+              <div className="text-base md:text-lg font-bold text-ghost">{mbi?.variables?.length || 0}</div>
             </div>
-            <div className="text-center px-4 py-2 bg-deep rounded-lg">
-              <div className="text-mist">Mappings</div>
-              <div className="text-lg font-bold text-ghost">{mbi?.mappings?.length || 0}</div>
+            <div className="text-center px-3 md:px-4 py-2 bg-deep rounded-lg">
+              <div className="text-xs md:text-sm text-mist">Mappings</div>
+              <div className="text-base md:text-lg font-bold text-ghost">{mbi?.mappings?.length || 0}</div>
             </div>
           </div>
         </div>
@@ -478,14 +478,15 @@ function ContractDetail({
           <button
             key={tab.id}
             onClick={() => setActiveSection(tab.id as any)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+            className={`flex items-center gap-1.5 px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium whitespace-nowrap transition-colors ${
               activeSection === tab.id
                 ? 'bg-cyber text-white'
                 : 'text-mist hover:text-ghost hover:bg-deep'
             }`}
           >
-            <tab.icon size={16} />
-            {tab.label}
+            <tab.icon size={14} className="md:w-4 md:h-4" />
+            <span className="hidden sm:inline">{tab.label}</span>
+            <span className="sm:hidden">{tab.label.slice(0, 4)}</span>
             {tab.count !== undefined && tab.count > 0 && (
               <span className="px-1.5 py-0.5 text-xs rounded-full bg-deep/50">
                 {tab.count}
@@ -656,12 +657,12 @@ function TokenDetail({ token, walletAddress, privateKey, isConnected, onConnectW
                     {token.symbol}
                   </span>
                 </div>
-                <div className="flex items-center gap-2 mt-1">
-                  <code className="text-sm text-electric font-mono">{token.address}</code>
-                  <button onClick={handleCopy} className="text-mist hover:text-ghost transition-colors">
+                <div className="flex items-center gap-2 mt-1 min-w-0">
+                  <code className="text-xs sm:text-sm text-electric font-mono truncate">{token.address}</code>
+                  <button onClick={handleCopy} className="text-mist hover:text-ghost transition-colors flex-shrink-0">
                     {copied ? <Check size={14} className="text-success" /> : <Copy size={14} />}
                   </button>
-                  <Link to={`/address/${token.address}`} className="text-mist hover:text-cyber transition-colors">
+                  <Link to={`/address/${token.address}`} className="text-mist hover:text-cyber transition-colors flex-shrink-0">
                     <ExternalLink size={14} />
                   </Link>
                 </div>
@@ -671,31 +672,31 @@ function TokenDetail({ token, walletAddress, privateKey, isConnected, onConnectW
         </div>
 
         {/* Token Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 pt-4 border-t border-deep">
-          <div className="p-3 bg-deep rounded-lg text-center">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3 mt-4 pt-4 border-t border-deep">
+          <div className="p-2 md:p-3 bg-deep rounded-lg text-center">
             <div className="text-xs text-mist">Total Supply</div>
-            <div className="text-lg font-bold text-ghost">{formatBalance(token.total_supply, token.decimals)}</div>
+            <div className="text-sm md:text-lg font-bold text-ghost truncate">{formatBalance(token.total_supply, token.decimals)}</div>
           </div>
-          <div className="p-3 bg-deep rounded-lg text-center">
+          <div className="p-2 md:p-3 bg-deep rounded-lg text-center">
             <div className="text-xs text-mist">Decimals</div>
-            <div className="text-lg font-bold text-ghost">{token.decimals}</div>
+            <div className="text-sm md:text-lg font-bold text-ghost">{token.decimals}</div>
           </div>
-          <div className="p-3 bg-deep rounded-lg text-center">
+          <div className="p-2 md:p-3 bg-deep rounded-lg text-center">
             <div className="text-xs text-mist">Holders</div>
-            <div className="text-lg font-bold text-ghost">{holderCount}</div>
+            <div className="text-sm md:text-lg font-bold text-ghost">{holderCount}</div>
           </div>
-          <div className="p-3 bg-deep rounded-lg text-center">
+          <div className="p-2 md:p-3 bg-deep rounded-lg text-center">
             <div className="text-xs text-mist">Symbol</div>
-            <div className="text-lg font-bold text-ghost">{token.symbol}</div>
+            <div className="text-sm md:text-lg font-bold text-ghost">{token.symbol}</div>
           </div>
         </div>
       </Card>
 
       {/* Token Functions */}
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         {/* Read: balance_of */}
         <Card>
-          <h3 className="text-lg font-semibold text-ghost mb-4 flex items-center gap-2">
+          <h3 className="text-base md:text-lg font-semibold text-ghost mb-4 flex items-center gap-2 flex-wrap">
             <Eye size={18} className="text-neon" />
             Read Functions
             <span className="text-xs px-2 py-0.5 rounded-full bg-neon/20 text-neon">No gas</span>
@@ -733,16 +734,18 @@ function TokenDetail({ token, walletAddress, privateKey, isConnected, onConnectW
 
         {/* Write: transfer */}
         <Card>
-          <h3 className="text-lg font-semibold text-ghost mb-4 flex items-center gap-2">
+          <h3 className="text-base md:text-lg font-semibold text-ghost mb-4 flex items-center gap-2 flex-wrap">
             <Send size={18} className="text-warning" />
             Write Functions
-            <span className="text-xs px-2 py-0.5 rounded-full bg-warning/20 text-warning">Requires signature</span>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-warning/20 text-warning">Requires sig</span>
           </h3>
           {!isConnected && (
-            <div className="mb-4 p-3 bg-warning/10 border border-warning/30 rounded-lg flex items-center gap-3">
-              <AlertTriangle size={18} className="text-warning" />
-              <span className="text-sm text-warning">Connect wallet to transfer tokens</span>
-              <button onClick={() => onConnectWallet?.()} className="ml-auto btn-primary text-sm py-1 px-3">
+            <div className="mb-4 p-3 bg-warning/10 border border-warning/30 rounded-lg flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+              <div className="flex items-center gap-2">
+                <AlertTriangle size={18} className="text-warning flex-shrink-0" />
+                <span className="text-sm text-warning">Connect wallet to transfer tokens</span>
+              </div>
+              <button onClick={() => onConnectWallet?.()} className="sm:ml-auto btn-primary text-sm py-1 px-3 w-full sm:w-auto">
                 Connect
               </button>
             </div>
@@ -920,16 +923,16 @@ function TokenDetail({ token, walletAddress, privateKey, isConnected, onConnectW
                 to={`/address/${holder.address}`}
                 className="flex items-center justify-between p-3 rounded-lg bg-deep/50 hover:bg-deep transition-colors"
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-warning to-orange-500 flex items-center justify-center text-white font-bold text-sm">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-gradient-to-br from-warning to-orange-500 flex items-center justify-center text-white font-bold text-xs md:text-sm flex-shrink-0">
                     {i + 1}
                   </div>
-                  <span className="font-mono text-sm text-electric">
-                    {formatAddress(holder.address)}
+                  <span className="font-mono text-xs md:text-sm text-electric truncate">
+                    {formatAddress(holder.address, 6)}
                   </span>
                 </div>
-                <div className="text-right">
-                  <div className="font-mono text-ghost">
+                <div className="text-right flex-shrink-0">
+                  <div className="font-mono text-sm md:text-base text-ghost">
                     {formatBalance(holder.balance_raw, token.decimals)}
                   </div>
                   <div className="text-xs text-mist">{token.symbol}</div>
@@ -1285,11 +1288,11 @@ function ContractFunctions({
       {/* View Functions */}
       {viewFunctions.length > 0 && (
         <Card>
-          <h3 className="text-lg font-semibold text-ghost mb-4 flex items-center gap-2">
+          <h3 className="text-base md:text-lg font-semibold text-ghost mb-4 flex items-center gap-2 flex-wrap">
             <Eye size={18} className="text-neon" />
             Read Functions
             <span className="text-xs px-2 py-0.5 rounded-full bg-neon/20 text-neon">
-              No gas required
+              No gas
             </span>
           </h3>
           <div className="space-y-3">
@@ -1312,18 +1315,20 @@ function ContractFunctions({
       {/* Write Functions */}
       {writeFunctions.length > 0 && (
         <Card>
-          <h3 className="text-lg font-semibold text-ghost mb-4 flex items-center gap-2">
+          <h3 className="text-base md:text-lg font-semibold text-ghost mb-4 flex items-center gap-2 flex-wrap">
             <Send size={18} className="text-warning" />
             Write Functions
             <span className="text-xs px-2 py-0.5 rounded-full bg-warning/20 text-warning">
-              Requires signature
+              Requires sig
             </span>
           </h3>
           {!isConnected && (
-            <div className="mb-4 p-3 bg-warning/10 border border-warning/30 rounded-lg flex items-center gap-3">
-              <AlertTriangle size={18} className="text-warning" />
-              <span className="text-sm text-warning">Connect wallet to execute write functions</span>
-              <button onClick={onConnectWallet} className="ml-auto btn-primary text-sm py-1 px-3">
+            <div className="mb-4 p-3 bg-warning/10 border border-warning/30 rounded-lg flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+              <div className="flex items-center gap-2">
+                <AlertTriangle size={18} className="text-warning flex-shrink-0" />
+                <span className="text-sm text-warning">Connect wallet to execute write functions</span>
+              </div>
+              <button onClick={onConnectWallet} className="sm:ml-auto btn-primary text-sm py-1 px-3 w-full sm:w-auto">
                 Connect
               </button>
             </div>
@@ -1445,18 +1450,18 @@ function FunctionCard({
       {/* Header */}
       <button
         onClick={() => setExpanded(!expanded)}
-        className={`w-full p-4 flex items-center justify-between transition-colors ${
+        className={`w-full p-3 md:p-4 flex items-center justify-between transition-colors ${
           isView ? 'bg-neon/5 hover:bg-neon/10' : 'bg-warning/5 hover:bg-warning/10'
         }`}
       >
-        <div className="flex items-center gap-3">
-          {expanded ? <ChevronDown size={16} className="text-mist" /> : <ChevronRight size={16} className="text-mist" />}
-          <code className="font-mono font-medium text-ghost">{func.name}</code>
+        <div className="flex items-center gap-2 md:gap-3 flex-wrap min-w-0">
+          {expanded ? <ChevronDown size={16} className="text-mist flex-shrink-0" /> : <ChevronRight size={16} className="text-mist flex-shrink-0" />}
+          <code className="font-mono font-medium text-ghost text-sm">{func.name}</code>
           {func.modifiers?.map((mod: any, idx: number) => {
             const modStr = typeof mod === 'string' ? mod : String(mod)
             const modLower = modStr.toLowerCase()
             return (
-              <span key={idx} className={`text-xs px-2 py-0.5 rounded-full ${
+              <span key={idx} className={`text-xs px-1.5 md:px-2 py-0.5 rounded-full hidden sm:inline ${
                 modLower.includes('view') ? 'bg-neon/20 text-neon' :
                 modLower.includes('public') ? 'bg-electric/20 text-electric' :
                 modLower.includes('write') ? 'bg-warning/20 text-warning' :
@@ -1469,12 +1474,12 @@ function FunctionCard({
             )
           })}
         </div>
-        <div className="flex items-center gap-2 text-sm text-mist">
+        <div className="flex items-center gap-2 text-xs md:text-sm text-mist flex-shrink-0">
           {func.args?.length > 0 && (
-            <span>({func.args.length} args)</span>
+            <span>({func.args.length})</span>
           )}
           {func.returns && (
-            <span>→ {func.returns}</span>
+            <span className="hidden sm:inline">→ {func.returns}</span>
           )}
         </div>
       </button>
@@ -1488,7 +1493,7 @@ function FunctionCard({
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden"
           >
-            <div className={`p-4 space-y-4 border-t ${
+            <div className={`p-3 md:p-4 space-y-3 md:space-y-4 border-t ${
               isView ? 'border-neon/30 bg-abyss' : 'border-warning/30 bg-abyss'
             }`}>
               {/* Arguments */}
@@ -1496,8 +1501,8 @@ function FunctionCard({
                 <div className="space-y-2">
                   <div className="text-sm font-medium text-mist">Arguments</div>
                   {func.args.map((arg: any, i: number) => (
-                    <div key={i} className="flex gap-2 items-center">
-                      <label className="text-sm text-mist w-24 shrink-0">
+                    <div key={i} className="flex flex-col sm:flex-row gap-1 sm:gap-2 sm:items-center">
+                      <label className="text-sm text-mist sm:w-24 shrink-0">
                         {arg.name}
                         <span className="text-xs text-deep ml-1">({arg.type})</span>
                       </label>
@@ -1539,9 +1544,9 @@ function FunctionCard({
 
               {/* Result */}
               {result !== null && (
-                <div className="p-3 bg-success/10 border border-success/30 rounded-lg">
+                <div className="p-2 md:p-3 bg-success/10 border border-success/30 rounded-lg">
                   <div className="text-xs text-success font-medium mb-1">Result</div>
-                  <div className="font-mono text-ghost break-all">
+                  <div className="font-mono text-xs md:text-sm text-ghost break-all">
                     {typeof result === 'object' ? JSON.stringify(result, null, 2) : String(result)}
                   </div>
                 </div>
@@ -1549,8 +1554,8 @@ function FunctionCard({
 
               {/* Error */}
               {error && (
-                <div className="p-3 bg-error/10 border border-error/30 rounded-lg">
-                  <div className="text-sm text-error">{error}</div>
+                <div className="p-2 md:p-3 bg-error/10 border border-error/30 rounded-lg">
+                  <div className="text-xs md:text-sm text-error break-words">{error}</div>
                   {error.includes('Insufficient balance') && (
                     <Link to="/wallet" className="mt-2 flex items-center gap-1 text-xs text-electric hover:text-cyber transition-colors">
                       <Droplets size={12} />
@@ -1587,8 +1592,35 @@ function ContractTransactions({ transactions, contractAddress: _contractAddress 
         <Activity size={18} className="text-cyber" />
         Transaction History ({transactions.length})
       </h3>
-      
-      <div className="overflow-x-auto">
+
+      {/* Mobile: card layout */}
+      <div className="space-y-3 md:hidden">
+        {transactions.map((tx: any) => (
+          <Link
+            key={tx.hash}
+            to={`/tx/${tx.hash}`}
+            className="block p-3 rounded-lg bg-deep/30 border border-deep space-y-2"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-electric font-mono text-xs">{formatAddress(tx.hash, 10)}</span>
+              <span className={`px-2 py-0.5 rounded-full text-xs ${
+                tx.tx_type === 'deploy_contract' ? 'bg-success/20 text-success' :
+                tx.tx_type === 'call_contract' ? 'bg-cyber/20 text-cyber' :
+                'bg-deep text-mist'
+              }`}>
+                {tx.tx_type}
+              </span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-mist">From: <span className="text-ghost font-mono">{formatAddress(tx.from, 6)}</span></span>
+              <span className="text-mist">{formatTimeAgo(tx.timestamp)}</span>
+            </div>
+          </Link>
+        ))}
+      </div>
+
+      {/* Desktop: table layout */}
+      <div className="overflow-x-auto hidden md:block">
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-mist border-b border-deep">
@@ -1739,19 +1771,14 @@ function DeployContract({
         isEditing ? 'ring-2 ring-cyber/50 shadow-lg shadow-cyber/10' : ''
       }`}>
         {/* Editor Header */}
-        <div className={`flex items-center justify-between p-3 border-b transition-colors ${
+        <div className={`flex flex-wrap items-center justify-between gap-2 p-3 border-b transition-colors ${
           isEditing ? 'border-cyber/30 bg-cyber/5' : 'border-deep'
         }`}>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <div className={`p-1.5 rounded transition-colors ${isEditing ? 'bg-cyber/20' : 'bg-deep'}`}>
               <Code size={16} className={isEditing ? 'text-cyber' : 'text-mist'} />
             </div>
-            <span className="font-medium text-ghost">Mosh Editor</span>
-            {isEditing && (
-              <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-cyber/20 text-cyber animate-pulse">
-                ● EDITING
-              </span>
-            )}
+            <span className="font-medium text-ghost text-sm">Mosh Editor</span>
           </div>
           <div className="flex items-center gap-2">
             {/* Compile Button */}
@@ -1827,14 +1854,13 @@ function DeployContract({
         <div className={`flex items-center justify-between px-3 py-1.5 text-xs border-t transition-colors ${
           isEditing ? 'bg-[#161b22] border-cyber/20 text-cyber' : 'bg-abyss border-deep text-mist'
         }`}>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <span>Ln {cursorLine}, Col {cursorCol}</span>
-            <span>{code.split('\n').length} lines</span>
-            <span>{code.length} chars</span>
+            <span className="hidden sm:inline">{code.split('\n').length} lines</span>
+            <span className="hidden sm:inline">{code.length} chars</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="px-1.5 py-0.5 rounded bg-deep/50">Mosh</span>
-            <span className="px-1.5 py-0.5 rounded bg-deep/50">UTF-8</span>
           </div>
         </div>
       </Card>

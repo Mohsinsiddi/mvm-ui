@@ -9,21 +9,19 @@ interface AddressLinkProps {
   className?: string
 }
 
-export default function AddressLink({ 
-  address, 
-  short = true, 
+export default function AddressLink({
+  address,
+  short = true,
   showCopy = true,
-  className = '' 
+  className = ''
 }: AddressLinkProps) {
-  const displayAddress = short ? formatAddress(address) : address
-
   return (
-    <span className={`inline-flex items-center gap-1 ${className}`}>
-      <Link 
+    <span className={`inline-flex items-center gap-1 min-w-0 max-w-full ${className}`}>
+      <Link
         to={`/address/${address}`}
-        className="font-mono text-electric hover:text-ice transition-colors"
+        className="font-mono text-electric hover:text-ice transition-colors truncate text-sm"
       >
-        {displayAddress}
+        {short ? formatAddress(address) : address}
       </Link>
       {showCopy && <CopyButton text={address} />}
     </span>

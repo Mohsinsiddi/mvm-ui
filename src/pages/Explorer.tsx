@@ -40,14 +40,14 @@ export default function Explorer() {
             <Tabs.Trigger
               key={tab.value}
               value={tab.value}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap
+              className={`px-3 md:px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap
                 ${activeTab === tab.value 
                   ? 'bg-cyber text-white' 
                   : 'text-mist hover:text-ghost hover:bg-deep'}`}
             >
               {tab.label}
               {tab.count !== undefined && (
-                <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-deep">
+                <span className="ml-1 md:ml-2 px-1.5 md:px-2 py-0.5 text-xs rounded-full bg-deep hidden sm:inline">
                   {tab.count}
                 </span>
               )}
@@ -123,7 +123,7 @@ export default function Explorer() {
                 className="card-hover"
               >
                 <div className="font-medium text-ghost">{contract.name}</div>
-                <div className="text-sm text-mist font-mono mt-1">{contract.address.slice(0, 20)}...</div>
+                <div className="text-xs md:text-sm text-mist font-mono mt-1 truncate">{contract.address}</div>
               </motion.a>
             ))}
             {(!contractsData?.contracts || contractsData.contracts.length === 0) && (

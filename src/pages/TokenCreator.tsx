@@ -267,12 +267,12 @@ export default function TokenCreator() {
             <h2 className="text-sm font-bold text-mist mb-2 flex items-center gap-2">
               <span className="text-cyber">$</span> Deployment Console
             </h2>
-            <div className="bg-void rounded-lg p-3 h-64 overflow-y-auto font-mono text-xs space-y-0.5">
+            <div className="bg-void rounded-lg p-3 h-48 md:h-64 overflow-y-auto font-mono text-xs space-y-0.5">
               {logs.length === 0 ? (
                 <p className="text-shadow">Waiting for deployment...</p>
               ) : (
                 logs.map((log, i) => (
-                  <div key={i} className="text-ghost/80">{log}</div>
+                  <LogLine key={i} log={log} />
                 ))
               )}
             </div>
@@ -281,4 +281,49 @@ export default function TokenCreator() {
       </div>
     </motion.div>
   )
+}
+
+function LogLine({ log }: { log: string }) {
+  const isError = log.includes('Error:')
+  const isSuccess = log.includes('✓') || log.includes('successfully') || log.includes('deployed at:')
+  const isTxHash = log.includes('TX submitted:') || log.includes('Signed:')
+  const isWaiting = log.includes('Waiting') || log.includes('Checking')
+
+  const color = isError
+    ? 'text-error'
+    : isSuccess
+    ? 'text-success'
+    : isTxHash
+    ? 'text-cyber'
+    : isWaiting
+    ? 'text-warning'
+    : 'text-ghost/80'
+
+  // Make addresses and hashes clickable
+  const addressMatch = log.match(/deployed at: (mvm1[a-z0-9]+)/)
+  const hashMatch = log.match(/TX submitted: ([a-f0-9]+)/)
+
+  if (addressMatch) {
+    const addr = addressMatch[1]
+    const before = log.slice(0, log.indexOf(addr))
+    return (
+      <div className={color}>
+        {before}
+        <a href={`/address/${addr}`} className="text-electric hover:text-ice underline">{addr}</a>
+      </div>
+    )
+  }
+
+  if (hashMatch) {
+    const hash = hashMatch[1]
+    const before = log.slice(0, log.indexOf(hash))
+    return (
+      <div className={color}>
+        {before}
+        <a href={`/tx/${hash}`} className="text-electric hover:text-ice underline">{hash}</a>
+      </div>
+    )
+  }
+
+  return <div className={color}>{log}</div>
 }

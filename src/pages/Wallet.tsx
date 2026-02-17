@@ -121,9 +121,9 @@ function WalletConnected({
                 key={balance}
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="text-4xl md:text-5xl font-bold text-ghost"
+                className="text-2xl sm:text-4xl md:text-5xl font-bold text-ghost"
               >
-                {formatBalance(balance)} <span className="text-2xl text-mist">MVM</span>
+                {formatBalance(balance)} <span className="text-lg sm:text-2xl text-mist">MVM</span>
               </motion.h2>
             )}
             <AddressDisplay address={address} />

@@ -128,25 +128,25 @@ export default function NodeConnection() {
         >
           <Card>
             <div className="text-center">
-              <p className="text-3xl font-bold text-ghost">{status.height}</p>
+              <p className="text-xl md:text-3xl font-bold text-ghost">{status.height}</p>
               <p className="text-sm text-mist">Block Height</p>
             </div>
           </Card>
           <Card>
             <div className="text-center">
-              <p className="text-3xl font-bold text-ghost">{status.peers}</p>
+              <p className="text-xl md:text-3xl font-bold text-ghost">{status.peers}</p>
               <p className="text-sm text-mist">Full Nodes</p>
             </div>
           </Card>
           <Card>
             <div className="text-center">
-              <p className="text-3xl font-bold text-ghost">{status.browsers}</p>
+              <p className="text-xl md:text-3xl font-bold text-ghost">{status.browsers}</p>
               <p className="text-sm text-mist">Browser Nodes</p>
             </div>
           </Card>
           <Card>
             <div className="text-center">
-              <p className="text-3xl font-bold text-ghost">{status.pending_transactions}</p>
+              <p className="text-xl md:text-3xl font-bold text-ghost">{status.pending_transactions}</p>
               <p className="text-sm text-mist">Pending TXs</p>
             </div>
           </Card>
@@ -169,23 +169,23 @@ export default function NodeConnection() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-deep">
-                  <th className="text-left py-3 px-4 text-mist font-medium">Feature</th>
-                  <th className="text-center py-3 px-4">
+                  <th className="text-left py-3 px-2 md:px-4 text-mist font-medium text-xs md:text-sm">Feature</th>
+                  <th className="text-center py-3 px-2 md:px-4">
                     <div className="flex flex-col items-center gap-1">
                       <Server size={24} className="text-cyber" />
-                      <span className="text-ghost font-medium">Master Node</span>
+                      <span className="text-ghost font-medium text-xs md:text-sm">Master Node</span>
                     </div>
                   </th>
-                  <th className="text-center py-3 px-4">
+                  <th className="text-center py-3 px-2 md:px-4">
                     <div className="flex flex-col items-center gap-1">
                       <Monitor size={24} className="text-neon" />
-                      <span className="text-ghost font-medium">Full Node</span>
+                      <span className="text-ghost font-medium text-xs md:text-sm">Full Node</span>
                     </div>
                   </th>
-                  <th className="text-center py-3 px-4">
+                  <th className="text-center py-3 px-2 md:px-4">
                     <div className="flex flex-col items-center gap-1">
                       <Smartphone size={24} className="text-electric" />
-                      <span className="text-ghost font-medium">Browser Node</span>
+                      <span className="text-ghost font-medium text-xs md:text-sm">Browser Node</span>
                     </div>
                   </th>
                 </tr>
@@ -274,7 +274,7 @@ export default function NodeConnection() {
             <div className="w-0.5 h-8 bg-gradient-to-b from-cyber to-neon" />
 
             {/* Full Nodes */}
-            <div className="flex items-center gap-8">
+            <div className="flex items-center gap-4 md:gap-8">
               {[1, 2, 3].map((i) => (
                 <div key={i} className="flex flex-col items-center">
                   <div className="w-0.5 h-8 bg-neon" />
@@ -287,7 +287,7 @@ export default function NodeConnection() {
             </div>
 
             {/* Connection Lines */}
-            <div className="flex items-center gap-8 mt-4">
+            <div className="flex items-center gap-4 md:gap-8 mt-4">
               {[1, 2, 3].map((i) => (
                 <div key={i} className="w-0.5 h-8 bg-electric/50" />
               ))}
@@ -366,13 +366,13 @@ export default function NodeConnection() {
             Want to validate transactions yourself? Run a full node to participate in the network.
           </p>
           
-          <div className="p-4 rounded-lg bg-deep font-mono text-sm">
+          <div className="p-3 md:p-4 rounded-lg bg-deep font-mono text-xs md:text-sm overflow-x-auto">
             <p className="text-mist"># Clone the repository</p>
             <p className="text-ghost">git clone https://github.com/user/mvm</p>
             <p className="text-ghost">cd mvm</p>
             <p className="text-mist mt-2"># Build and run</p>
             <p className="text-ghost">cargo build --release</p>
-            <p className="text-ghost">./target/release/mvm --mode full --master ws://master:8545/ws</p>
+            <p className="text-ghost whitespace-nowrap">./target/release/mvm --mode full --master ws://master:8545/ws</p>
           </div>
         </Card>
       </motion.div>
@@ -404,10 +404,10 @@ function ComparisonRow({
 
   return (
     <tr className="border-b border-deep/50">
-      <td className="py-3 px-4 text-ghost">{feature}</td>
-      <td className="py-3 px-4 text-center">{renderValue(master)}</td>
-      <td className="py-3 px-4 text-center">{renderValue(full)}</td>
-      <td className="py-3 px-4 text-center">{renderValue(browser)}</td>
+      <td className="py-3 px-2 md:px-4 text-ghost text-xs md:text-sm">{feature}</td>
+      <td className="py-3 px-2 md:px-4 text-center">{renderValue(master)}</td>
+      <td className="py-3 px-2 md:px-4 text-center">{renderValue(full)}</td>
+      <td className="py-3 px-2 md:px-4 text-center">{renderValue(browser)}</td>
     </tr>
   )
 }

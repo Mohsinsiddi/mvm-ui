@@ -248,7 +248,7 @@ export default function Terminal() {
         >
           {/* Welcome Message */}
           <div className="text-mist">
-            <pre className="text-cyber text-xs leading-tight mb-2">{`
+            <pre className="text-cyber text-xs leading-tight mb-2 overflow-x-auto">{`
  ███╗   ███╗██╗   ██╗███╗   ███╗
  ████╗ ████║██║   ██║████╗ ████║
  ██╔████╔██║██║   ██║██╔████╔██║
@@ -266,7 +266,7 @@ export default function Terminal() {
                 <ChevronRight size={14} className="text-cyber" />
                 <span className="text-ghost">{item.command}</span>
               </div>
-              <pre className={`pl-5 whitespace-pre-wrap ${item.isError ? 'text-error' : 'text-ghost'}`}>
+              <pre className={`pl-5 whitespace-pre-wrap break-all ${item.isError ? 'text-error' : 'text-ghost'}`}>
                 {item.output}
               </pre>
             </div>
