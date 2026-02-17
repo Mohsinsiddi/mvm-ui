@@ -181,7 +181,7 @@ function WalletConnected({
             className="grid lg:grid-cols-2 gap-6"
           >
             <TokenBalances address={address} tokens={tokensData?.tokens || []} />
-            <RecentActivity transactions={txsData?.transactions || []} address={address} />
+            <RecentActivity transactions={txsData?.transactions || []} address={address} tokens={tokensData?.tokens || []} />
           </motion.div>
         )}
 
@@ -356,8 +356,14 @@ function TokenBalances({ address, tokens }: { address: string; tokens: any[] }) 
   )
 }
 
-function RecentActivity({ transactions, address }: { transactions: any[]; address: string }) {
-  const recentTxs = transactions.slice(0, 5)
+function RecentActivity({ transactions, address, tokens }: { transactions: any[]; address: string; tokens: any[] }) {
+  const recentTxs = transactions.slice(0, 8)
+
+  // Build token lookup by contract address
+  const tokenMap: Record<string, { name: string; symbol: string; decimals: number }> = {}
+  for (const t of tokens) {
+    tokenMap[t.address] = { name: t.name, symbol: t.symbol, decimals: t.decimals ?? 8 }
+  }
 
   const txMeta: Record<string, { label: string; icon: string; color: string; bg: string }> = {
     transfer:        { label: 'Transfer',       icon: '💸', color: 'text-electric', bg: 'bg-electric/20' },
@@ -367,18 +373,23 @@ function RecentActivity({ transactions, address }: { transactions: any[]; addres
     call_contract:   { label: 'Contract Call',  icon: '⚡', color: 'text-success',  bg: 'bg-success/20' },
   }
 
-  // Extract contract details from tx.data
-  function getContractInfo(tx: any): { method?: string; contract?: string; name?: string } | null {
+  // Extract details from tx.data for each type
+  function getTxDetails(tx: any) {
     const data = tx.data
-    if (!data) return null
-    // Backend serde format: { "CallContract": { contract, method, args } }
-    if (data.CallContract) return { method: data.CallContract.method, contract: data.CallContract.contract }
-    // snake_case format from as_str: { contract, method, args }
-    if (data.contract && data.method) return { method: data.method, contract: data.contract }
-    // Deploy contract
-    if (data.DeployContract) return { name: data.DeployContract.name }
-    if (data.name && !data.method) return { name: data.name }
-    return null
+    if (!data) return {}
+    // Token transfer: { TransferToken: { amount, contract, to } }
+    if (data.TransferToken) return { tokenAmount: data.TransferToken.amount, tokenTo: data.TransferToken.to, tokenContract: data.TransferToken.contract }
+    if (data.transfer_token) return { tokenAmount: data.transfer_token.amount, tokenTo: data.transfer_token.to, tokenContract: data.transfer_token.contract }
+    // Create token: { CreateToken: { name, symbol, total_supply } }
+    if (data.CreateToken) return { tokenName: data.CreateToken.name, tokenSymbol: data.CreateToken.symbol, tokenSupply: data.CreateToken.total_supply }
+    if (data.create_token) return { tokenName: data.create_token.name, tokenSymbol: data.create_token.symbol, tokenSupply: data.create_token.total_supply }
+    // Deploy contract: { DeployContract: { name } }
+    if (data.DeployContract) return { contractName: data.DeployContract.name }
+    if (data.name && !data.method) return { contractName: data.name }
+    // Call contract: { CallContract: { contract, method, args } }
+    if (data.CallContract) return { contractMethod: data.CallContract.method, contractAddr: data.CallContract.contract }
+    if (data.contract && data.method) return { contractMethod: data.method, contractAddr: data.contract }
+    return {}
   }
 
   return (
@@ -392,69 +403,93 @@ function RecentActivity({ transactions, address }: { transactions: any[]; addres
           No transactions yet
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {recentTxs.map((tx) => {
             const isOutgoing = tx.from?.toLowerCase() === address.toLowerCase()
             const txType = normalizeTxType(tx.tx_type)
             const meta = txMeta[txType] || txMeta.transfer
             const rawValue = Number(tx.value_raw ?? tx.value ?? 0)
-            const isTransfer = txType === 'transfer' || txType === 'transfer_token'
-            const contractInfo = getContractInfo(tx)
+            const details = getTxDetails(tx)
 
-            // Label: for transfers show Sent/Received, for others show tx type
+            // Label & subtitle based on type
             let label = meta.label
-            if (isTransfer) {
+            let subtitle = ''
+            let amountText = ''
+            let amountColor = 'text-mist'
+
+            if (txType === 'transfer') {
               label = isOutgoing ? 'Sent' : 'Received'
+              subtitle = isOutgoing
+                ? `To ${formatAddress(tx.to || '', 6)}`
+                : `From ${formatAddress(tx.from || '', 6)}`
+              if (rawValue > 0) {
+                amountText = `${isOutgoing ? '-' : '+'}${formatBalance(rawValue)} MVM`
+                amountColor = isOutgoing ? 'text-error' : 'text-success'
+              }
+            } else if (txType === 'transfer_token') {
+              const tkn = tokenMap[details.tokenContract || '']
+              const symbol = tkn?.symbol || 'Token'
+              const decimals = tkn?.decimals ?? 8
+              label = isOutgoing ? `Sent ${symbol}` : `Received ${symbol}`
+              subtitle = isOutgoing
+                ? `To ${formatAddress(details.tokenTo || '', 6)}`
+                : `From ${formatAddress(tx.from || '', 6)}`
+              if (details.tokenAmount) {
+                const amt = Number(details.tokenAmount)
+                amountText = `${isOutgoing ? '-' : '+'}${formatBalance(amt, decimals)} ${symbol}`
+                amountColor = isOutgoing ? 'text-error' : 'text-success'
+              }
+            } else if (txType === 'create_token') {
+              label = 'Created Token'
+              subtitle = details.tokenSymbol
+                ? `${details.tokenName} (${details.tokenSymbol})`
+                : 'New token'
+              if (details.tokenSupply) {
+                amountText = `Supply: ${Number(details.tokenSupply).toLocaleString()}`
+              }
+            } else if (txType === 'deploy_contract') {
+              label = 'Deployed Contract'
+              subtitle = details.contractName || 'Contract'
+            } else if (txType === 'call_contract') {
+              label = 'Contract Call'
+              subtitle = details.contractMethod ? `${details.contractMethod}()` : ''
+              if (rawValue > 0) {
+                amountText = `${formatBalance(rawValue)} MVM`
+              }
             }
 
-            // Subtitle: show contract method or contract name
-            let subtitle = ''
-            if (contractInfo?.method) {
-              subtitle = `${contractInfo.method}()`
-            } else if (contractInfo?.name) {
-              subtitle = contractInfo.name
-            }
+            const isTransfer = txType === 'transfer' || txType === 'transfer_token'
 
             return (
               <a
                 key={tx.hash}
                 href={`/tx/${tx.hash}`}
-                className="flex items-center justify-between p-3 rounded-lg bg-deep/50 hover:bg-deep transition-colors"
+                className="flex items-center gap-3 p-3 rounded-lg bg-deep/50 hover:bg-deep transition-colors"
               >
-                <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${isTransfer ? (isOutgoing ? 'bg-error/20' : 'bg-success/20') : meta.bg}`}>
-                    {isTransfer ? (
-                      isOutgoing ? <ArrowUpRight size={16} className="text-error" /> : <ArrowDownLeft size={16} className="text-success" />
-                    ) : (
-                      <span className="text-sm">{meta.icon}</span>
-                    )}
-                  </div>
-                  <div>
-                    <div className="font-medium text-ghost">{label}</div>
-                    {subtitle ? (
-                      <div className="text-xs text-mist font-mono">{subtitle}</div>
-                    ) : (
-                      <div className="text-xs text-mist">{formatTimeAgo(tx.timestamp)}</div>
-                    )}
-                    {subtitle && (
-                      <div className="text-xs text-mist">{formatTimeAgo(tx.timestamp)}</div>
-                    )}
-                  </div>
-                </div>
-                <div className="text-right">
-                  {isTransfer && rawValue > 0 ? (
-                    <div className={`font-mono ${isOutgoing ? 'text-error' : 'text-success'}`}>
-                      {isOutgoing ? '-' : '+'}{formatBalance(rawValue)} MVM
-                    </div>
-                  ) : rawValue > 0 ? (
-                    <div className="font-mono text-mist">
-                      {formatBalance(rawValue)} MVM
-                    </div>
+                <div className={`p-2 rounded-lg flex-shrink-0 ${isTransfer ? (isOutgoing ? 'bg-error/20' : 'bg-success/20') : meta.bg}`}>
+                  {isTransfer ? (
+                    isOutgoing ? <ArrowUpRight size={16} className="text-error" /> : <ArrowDownLeft size={16} className="text-success" />
                   ) : (
-                    <div className={`text-sm ${meta.color}`}>{meta.label}</div>
+                    <span className="text-sm">{meta.icon}</span>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-ghost text-sm">{label}</span>
+                    <span className="text-xs text-mist">{formatTimeAgo(tx.timestamp)}</span>
+                  </div>
+                  {subtitle && (
+                    <div className="text-xs text-mist truncate">{subtitle}</div>
+                  )}
+                </div>
+                <div className="text-right flex-shrink-0">
+                  {amountText ? (
+                    <div className={`font-mono text-sm ${amountColor}`}>{amountText}</div>
+                  ) : (
+                    <div className={`text-xs ${meta.color}`}>{meta.label}</div>
                   )}
                   {tx.status === 'Failed' && (
-                    <div className="text-xs text-error">Failed</div>
+                    <div className="text-[10px] text-error">Failed</div>
                   )}
                 </div>
               </a>
@@ -462,7 +497,7 @@ function RecentActivity({ transactions, address }: { transactions: any[]; addres
           })}
         </div>
       )}
-      {transactions.length > 5 && (
+      {transactions.length > 8 && (
         <a
           href={`/address/${address}`}
           className="block text-center mt-4 text-sm text-electric hover:text-ice"

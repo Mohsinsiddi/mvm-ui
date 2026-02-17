@@ -1694,6 +1694,8 @@ function DeployContract({
   const [showSamples, setShowSamples] = useState(false)
   const [logs, setLogs] = useState<string[]>([])
   
+  // Track if code changed since last compile
+  const [needsCompile, setNeedsCompile] = useState(false)
   // Editor state
   const isEditing = false
   const [cursorLine, setCursorLine] = useState(1)
@@ -1786,6 +1788,7 @@ function DeployContract({
               onClick={() => {
                 const result = compile(code)
                 setCompileResult(result)
+                setNeedsCompile(false)
                 if (result.success) {
                   addLog('✅ Compiled successfully!')
                   addLog(`📝 Contract: ${result.json?.name}`)
@@ -1826,6 +1829,8 @@ function DeployContract({
                         setCode(sampleCode)
                         setShowSamples(false)
                         setDeployResult(null)
+                        setCompileResult(null)
+                        setNeedsCompile(true)
                       }}
                       className="w-full px-4 py-2 text-left text-sm text-mist hover:text-ghost hover:bg-deep transition-colors"
                     >
@@ -1842,7 +1847,7 @@ function DeployContract({
         <div className="h-[300px] md:h-[460px]">
           <MoshEditor
             value={code}
-            onChange={(val) => setCode(val)}
+            onChange={(val) => { setCode(val); setNeedsCompile(true) }}
             onCursorChange={(line, col) => {
               setCursorLine(line)
               setCursorCol(col)
@@ -1938,6 +1943,14 @@ function DeployContract({
           <button onClick={onConnectWallet} className="btn-primary w-full py-3 flex items-center justify-center gap-2">
             <AlertTriangle size={18} />
             Connect Wallet to Deploy
+          </button>
+        ) : needsCompile ? (
+          <button
+            disabled
+            className="btn-primary w-full py-3 flex items-center justify-center gap-2 opacity-60 cursor-not-allowed"
+          >
+            <AlertTriangle size={18} className="text-warning" />
+            Compile Before Deploying
           </button>
         ) : (
           <button
