@@ -131,8 +131,8 @@ export default function AddressDetail() {
         className="card"
       >
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
-          <div className="flex items-center gap-4">
-            <div className={`p-3 md:p-4 rounded-xl ${
+          <div className="flex items-center gap-4 min-w-0">
+            <div className={`p-3 md:p-4 rounded-xl flex-shrink-0 ${
               isContract ? 'bg-gradient-to-br from-neon to-glow' :
               isToken ? 'bg-gradient-to-br from-warning to-orange-500' :
               'bg-gradient-to-br from-cyber to-neon'
@@ -145,7 +145,7 @@ export default function AddressDetail() {
                 <Wallet className="text-white w-6 h-6 md:w-8 md:h-8" />
               )}
             </div>
-            <div>
+            <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-xl md:text-2xl font-bold text-ghost">
                   {isContract ? 'Contract' : isToken ? 'Token' : 'Address'}
@@ -159,9 +159,9 @@ export default function AddressDetail() {
               </div>
               <button
                 onClick={handleCopy}
-                className="flex items-center gap-2 text-xs md:text-sm text-mist hover:text-electric transition-colors mt-1 max-w-full"
+                className="flex items-center gap-2 text-xs md:text-sm text-mist hover:text-electric transition-colors mt-1 max-w-full min-w-0 w-full"
               >
-                <span className="font-mono truncate">{address}</span>
+                <span className="font-mono truncate min-w-0">{address}</span>
                 <span className="flex-shrink-0">
                   {copied ? <Check size={14} className="text-success" /> : <Copy size={14} />}
                 </span>
