@@ -109,15 +109,15 @@ export default function WalletModal({ open, onClose }: WalletModalProps) {
     <Dialog.Root open={open} onOpenChange={handleClose}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-void/80 backdrop-blur-sm z-50" />
-        <Dialog.Content className="fixed z-50 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md p-4">
+        <Dialog.Content className="fixed z-50 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-2rem)] max-w-md">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
             className="card border-cyber/30"
           >
-            <div className="flex items-center justify-between mb-6">
-              <Dialog.Title className="text-xl font-bold text-ghost">
+            <div className="flex items-center justify-between mb-4 md:mb-6">
+              <Dialog.Title className="text-lg md:text-xl font-bold text-ghost">
                 {mode === 'select' && 'Connect Wallet'}
                 {mode === 'creating' && 'Creating Wallet...'}
                 {mode === 'create' && 'New Wallet Created'}
@@ -178,27 +178,27 @@ export default function WalletModal({ open, onClose }: WalletModalProps) {
                 >
                   <button
                     onClick={handleCreateWallet}
-                    className="w-full p-4 rounded-lg border border-deep hover:border-cyber bg-deep/50 hover:bg-deep transition-all flex items-center gap-4"
+                    className="w-full p-3 md:p-4 rounded-lg border border-deep hover:border-cyber bg-deep/50 hover:bg-deep transition-all flex items-center gap-3"
                   >
-                    <div className="p-3 rounded-lg bg-cyber/20">
-                      <Plus size={24} className="text-cyber" />
+                    <div className="p-2 md:p-3 rounded-lg bg-cyber/20">
+                      <Plus size={20} className="text-cyber" />
                     </div>
                     <div className="text-left">
-                      <div className="font-medium text-ghost">Create New Wallet</div>
-                      <div className="text-sm text-mist">Generate a new MVM wallet</div>
+                      <div className="text-sm md:text-base font-medium text-ghost">Create New Wallet</div>
+                      <div className="text-xs md:text-sm text-mist">Generate a new MVM wallet</div>
                     </div>
                   </button>
 
                   <button
                     onClick={() => setMode('import')}
-                    className="w-full p-4 rounded-lg border border-deep hover:border-neon bg-deep/50 hover:bg-deep transition-all flex items-center gap-4"
+                    className="w-full p-3 md:p-4 rounded-lg border border-deep hover:border-neon bg-deep/50 hover:bg-deep transition-all flex items-center gap-3"
                   >
-                    <div className="p-3 rounded-lg bg-neon/20">
-                      <Download size={24} className="text-neon" />
+                    <div className="p-2 md:p-3 rounded-lg bg-neon/20">
+                      <Download size={20} className="text-neon" />
                     </div>
                     <div className="text-left">
-                      <div className="font-medium text-ghost">Import Wallet</div>
-                      <div className="text-sm text-mist">Import with private key</div>
+                      <div className="text-sm md:text-base font-medium text-ghost">Import Wallet</div>
+                      <div className="text-xs md:text-sm text-mist">Import with private key</div>
                     </div>
                   </button>
                 </motion.div>
@@ -212,40 +212,40 @@ export default function WalletModal({ open, onClose }: WalletModalProps) {
                   exit={{ opacity: 0, y: -10 }}
                   className="space-y-4"
                 >
-                  <div className="p-4 rounded-lg bg-warning/10 border border-warning/30 flex items-start gap-3">
-                    <AlertTriangle size={20} className="text-warning shrink-0 mt-0.5" />
-                    <div className="text-sm text-warning">
+                  <div className="p-3 rounded-lg bg-warning/10 border border-warning/30 flex items-start gap-2">
+                    <AlertTriangle size={16} className="text-warning shrink-0 mt-0.5" />
+                    <div className="text-xs md:text-sm text-warning">
                       <strong>Important!</strong> Save your private key securely. It cannot be recovered if lost!
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-sm text-mist mb-2">Address</label>
-                    <div className="p-3 rounded-lg bg-deep font-mono text-sm text-electric break-all">
+                    <label className="block text-xs md:text-sm text-mist mb-1.5">Address</label>
+                    <div className="p-2.5 rounded-lg bg-deep font-mono text-xs md:text-sm text-electric break-all">
                       {newWallet.address}
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-sm text-mist mb-2">Private Key</label>
-                    <div className="p-3 rounded-lg bg-deep font-mono text-sm break-all relative">
+                    <label className="block text-xs md:text-sm text-mist mb-1.5">Private Key</label>
+                    <div className="p-2.5 rounded-lg bg-deep font-mono text-xs md:text-sm break-all relative pr-10">
                       <span className={showKey ? 'text-ghost' : 'blur-sm text-ghost select-none'}>
                         {newWallet.privateKey}
                       </span>
                       <button
                         onClick={() => setShowKey(!showKey)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-mist hover:text-ghost"
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-mist hover:text-ghost"
                       >
-                        {showKey ? <EyeOff size={18} /> : <Eye size={18} />}
+                        {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
                     </div>
                   </div>
 
-                  <div className="flex gap-3 pt-2">
-                    <button onClick={() => setMode('select')} className="btn-secondary flex-1">
+                  <div className="flex gap-2 pt-1">
+                    <button onClick={() => setMode('select')} className="btn-secondary flex-1 text-sm py-2">
                       Back
                     </button>
-                    <button onClick={handleConfirmCreate} className="btn-primary flex-1">
+                    <button onClick={handleConfirmCreate} className="btn-primary flex-1 text-sm py-2">
                       I've Saved It
                     </button>
                   </div>
@@ -285,11 +285,11 @@ export default function WalletModal({ open, onClose }: WalletModalProps) {
                     </div>
                   )}
 
-                  <div className="flex gap-3 pt-2">
-                    <button onClick={() => setMode('select')} className="btn-secondary flex-1">
+                  <div className="flex gap-2 pt-1">
+                    <button onClick={() => setMode('select')} className="btn-secondary flex-1 text-sm py-2">
                       Back
                     </button>
-                    <button onClick={handleImport} className="btn-primary flex-1">
+                    <button onClick={handleImport} className="btn-primary flex-1 text-sm py-2">
                       Import
                     </button>
                   </div>

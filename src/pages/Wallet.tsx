@@ -320,39 +320,42 @@ function TokenBalances({ address, tokens }: { address: string; tokens: any[] }) 
         <div className="flex justify-center py-8">
           <LoadingSpinner />
         </div>
-      ) : tokens.length === 0 ? (
-        <div className="text-center py-8 text-mist">
-          No tokens found on this network
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {tokens.map((token) => (
-            <Link
-              key={token.address}
-              to={`/contracts?tab=tokens&token=${token.address}`}
-              className="flex items-center justify-between p-3 rounded-lg bg-deep/50 hover:bg-deep transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-neon to-glow flex items-center justify-center text-white font-bold text-sm">
-                  {token.symbol.charAt(0)}
-                </div>
-                <div>
-                  <div className="font-medium text-ghost">{token.symbol}</div>
-                  <div className="text-xs text-mist">{token.name}</div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="text-right">
-                  <div className="font-mono text-ghost">
-                    {formatBalance(tokenBalances[token.address] || 0, token.decimals)}
+      ) : (() => {
+        const tokensWithBalance = tokens.filter((t) => (tokenBalances[t.address] || 0) > 0)
+        return tokensWithBalance.length === 0 ? (
+          <div className="text-center py-8 text-mist">
+            No token balances found
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {tokensWithBalance.map((token) => (
+              <Link
+                key={token.address}
+                to={`/contracts?tab=tokens&token=${token.address}`}
+                className="flex items-center justify-between p-3 rounded-lg bg-deep/50 hover:bg-deep transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-neon to-glow flex items-center justify-center text-white font-bold text-sm">
+                    {token.symbol.charAt(0)}
+                  </div>
+                  <div>
+                    <div className="font-medium text-ghost">{token.symbol}</div>
+                    <div className="text-xs text-mist">{token.name}</div>
                   </div>
                 </div>
-                <ExternalLink size={14} className="text-mist" />
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
+                <div className="flex items-center gap-2">
+                  <div className="text-right">
+                    <div className="font-mono text-ghost">
+                      {formatBalance(tokenBalances[token.address] || 0, token.decimals)}
+                    </div>
+                  </div>
+                  <ExternalLink size={14} className="text-mist" />
+                </div>
+              </Link>
+            ))}
+          </div>
+        )
+      })()}
     </Card>
   )
 }

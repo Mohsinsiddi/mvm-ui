@@ -476,7 +476,7 @@ function TokenHoldersList({ tokenAddress, decimals, symbol }: { tokenAddress: st
   return (
     <Card>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-ghost">
+        <h3 className="text-base md:text-lg font-semibold text-ghost">
           Holders ({holders.length})
         </h3>
       </div>
@@ -485,21 +485,21 @@ function TokenHoldersList({ tokenAddress, decimals, symbol }: { tokenAddress: st
           <Link
             key={holder.address}
             to={`/address/${holder.address}`}
-            className="flex items-center justify-between p-3 rounded-lg bg-deep/50 hover:bg-deep transition-colors"
+            className="flex items-center justify-between p-2 md:p-3 rounded-lg bg-deep/50 hover:bg-deep transition-colors gap-2"
           >
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyber to-electric flex items-center justify-center text-white font-bold text-sm">
+            <div className="flex items-center gap-2 md:gap-3 min-w-0">
+              <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-gradient-to-br from-cyber to-electric flex items-center justify-center text-white font-bold text-[10px] md:text-sm flex-shrink-0">
                 {i + 1}
               </div>
-              <span className="font-mono text-sm text-electric">
-                {formatAddress(holder.address)}
+              <span className="font-mono text-xs md:text-sm text-electric truncate">
+                {formatAddress(holder.address, 6)}
               </span>
             </div>
-            <div className="text-right">
-              <div className="font-mono text-ghost">
+            <div className="text-right flex-shrink-0">
+              <div className="font-mono text-xs md:text-sm text-ghost">
                 {formatBalance(holder.balance_raw, decimals)}
               </div>
-              <div className="text-xs text-mist">{symbol}</div>
+              <div className="text-[10px] md:text-xs text-mist">{symbol}</div>
             </div>
           </Link>
         ))}

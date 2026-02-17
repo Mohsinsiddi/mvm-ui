@@ -905,7 +905,7 @@ function TokenDetail({ token, walletAddress, privateKey, isConnected, onConnectW
 
       {/* Holders List */}
       <Card>
-        <h3 className="text-lg font-semibold text-ghost mb-4 flex items-center gap-2">
+        <h3 className="text-base md:text-lg font-semibold text-ghost mb-3 md:mb-4 flex items-center gap-2">
           <User size={18} className="text-warning" />
           Token Holders ({holderCount})
         </h3>
@@ -921,21 +921,21 @@ function TokenDetail({ token, walletAddress, privateKey, isConnected, onConnectW
               <Link
                 key={holder.address}
                 to={`/address/${holder.address}`}
-                className="flex items-center justify-between p-3 rounded-lg bg-deep/50 hover:bg-deep transition-colors"
+                className="flex items-center justify-between p-2 md:p-3 rounded-lg bg-deep/50 hover:bg-deep transition-colors gap-2"
               >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-gradient-to-br from-warning to-orange-500 flex items-center justify-center text-white font-bold text-xs md:text-sm flex-shrink-0">
+                <div className="flex items-center gap-2 md:gap-3 min-w-0">
+                  <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-gradient-to-br from-warning to-orange-500 flex items-center justify-center text-white font-bold text-[10px] md:text-sm flex-shrink-0">
                     {i + 1}
                   </div>
-                  <span className="font-mono text-xs md:text-sm text-electric truncate">
+                  <span className="font-mono text-xs text-electric truncate">
                     {formatAddress(holder.address, 6)}
                   </span>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <div className="font-mono text-sm md:text-base text-ghost">
+                  <div className="font-mono text-xs md:text-sm text-ghost">
                     {formatBalance(holder.balance_raw, token.decimals)}
                   </div>
-                  <div className="text-xs text-mist">{token.symbol}</div>
+                  <div className="text-[10px] md:text-xs text-mist">{token.symbol}</div>
                 </div>
               </Link>
             ))}

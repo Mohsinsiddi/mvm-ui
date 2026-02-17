@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  Menu, 
-  X, 
-  Wallet, 
+import {
+  Menu,
+  X,
+  Wallet,
   Search,
   Home,
   Compass,
@@ -13,21 +13,57 @@ import {
   FileCode,
   GraduationCap,
   Trophy,
-  ChevronDown
+  ChevronDown,
+  Coins,
+  Sparkles,
+  KeyRound
 } from 'lucide-react'
 import Logo from './Logo'
 import SearchBar from '@/components/explorer/SearchBar'
 import { useWalletStore } from '@/store/walletStore'
 import { formatAddress } from '@/lib/format'
 
-const navItems = [
+// Grouped navigation for desktop dropdowns
+const desktopNav = [
+  { path: '/', label: 'Dashboard', icon: Home },
+  {
+    label: 'Explore',
+    icon: Compass,
+    children: [
+      { path: '/explorer', label: 'Explorer', icon: Compass, desc: 'Blocks, transactions & tokens' },
+      { path: '/contracts', label: 'Smart Contracts', icon: FileCode, desc: 'Deploy & interact' },
+      { path: '/terminal', label: 'Terminal', icon: Terminal, desc: 'CLI interface' },
+    ]
+  },
+  {
+    label: 'Network',
+    icon: Cpu,
+    children: [
+      { path: '/node', label: 'Node', icon: Cpu, desc: 'Connection & topology' },
+      { path: '/leaderboard', label: 'Leaderboard', icon: Trophy, desc: 'Top accounts' },
+    ]
+  },
+  {
+    label: 'Learn',
+    icon: GraduationCap,
+    children: [
+      { path: '/learn/wallet', label: 'Wallet Lab', icon: KeyRound, desc: 'How wallets work' },
+      { path: '/learn/vanity', label: 'Vanity Generator', icon: Sparkles, desc: 'Custom address prefix' },
+      { path: '/tokens/create', label: 'Create Token', icon: Coins, desc: 'Deploy MVM-20 token' },
+    ]
+  },
+]
+
+// Flat list for mobile
+const mobileNav = [
   { path: '/', label: 'Dashboard', icon: Home },
   { path: '/explorer', label: 'Explorer', icon: Compass },
+  { path: '/contracts', label: 'Contracts', icon: FileCode },
   { path: '/terminal', label: 'Terminal', icon: Terminal },
   { path: '/node', label: 'Node', icon: Cpu },
-  { path: '/contracts', label: 'Contracts', icon: FileCode },
-  { 
-    label: 'Learn', 
+  { path: '/leaderboard', label: 'Leaderboard', icon: Trophy },
+  {
+    label: 'Learn',
     icon: GraduationCap,
     children: [
       { path: '/learn/wallet', label: 'Wallet Lab' },
@@ -35,13 +71,86 @@ const navItems = [
       { path: '/tokens/create', label: 'Create Token' },
     ]
   },
-  { path: '/leaderboard', label: 'Leaderboard', icon: Trophy },
 ]
+
+function DropdownMenu({
+  item,
+  isOpen,
+  onToggle,
+  onClose,
+  pathname
+}: {
+  item: any
+  isOpen: boolean
+  onToggle: () => void
+  onClose: () => void
+  pathname: string
+}) {
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        onClose()
+      }
+    }
+    if (isOpen) document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [isOpen, onClose])
+
+  const isChildActive = item.children?.some((c: any) => pathname === c.path)
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={onToggle}
+        className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors
+          ${isOpen || isChildActive ? 'bg-deep text-ghost' : 'text-mist hover:text-ghost hover:bg-deep/50'}`}
+      >
+        <item.icon size={16} />
+        {item.label}
+        <ChevronDown size={12} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 8 }}
+            transition={{ duration: 0.15 }}
+            className="absolute top-full left-0 mt-1 w-56 py-1.5 bg-abyss border border-deep rounded-xl shadow-xl shadow-void/50"
+          >
+            {item.children.map((child: any) => {
+              const Icon = child.icon
+              return (
+                <Link
+                  key={child.path}
+                  to={child.path}
+                  onClick={onClose}
+                  className={`flex items-center gap-3 px-3 py-2.5 mx-1.5 rounded-lg text-sm transition-colors
+                    ${pathname === child.path
+                      ? 'bg-cyber/15 text-cyber'
+                      : 'text-mist hover:text-ghost hover:bg-deep'}`}
+                >
+                  {Icon && <Icon size={16} className="flex-shrink-0" />}
+                  <div>
+                    <div className="font-medium">{child.label}</div>
+                    {child.desc && <div className="text-xs text-shadow mt-0.5">{child.desc}</div>}
+                  </div>
+                </Link>
+              )
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
-  const [learnOpen, setLearnOpen] = useState(false)
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const location = useLocation()
   const { address, isConnected, setShowWalletModal } = useWalletStore()
 
@@ -53,51 +162,28 @@ export default function Header() {
           <Logo />
 
           {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center gap-1">
-            {navItems.map((item) => 
+          <nav className="hidden lg:flex items-center gap-0.5">
+            {desktopNav.map((item) =>
               item.children ? (
-                <div key={item.label} className="relative">
-                  <button
-                    onClick={() => setLearnOpen(!learnOpen)}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors
-                      ${learnOpen ? 'bg-deep text-ghost' : 'text-mist hover:text-ghost hover:bg-deep/50'}`}
-                  >
-                    <item.icon size={18} />
-                    {item.label}
-                    <ChevronDown size={14} className={`transition-transform ${learnOpen ? 'rotate-180' : ''}`} />
-                  </button>
-                  <AnimatePresence>
-                    {learnOpen && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 10 }}
-                        className="absolute top-full left-0 mt-1 w-48 py-2 bg-abyss border border-deep rounded-lg shadow-lg"
-                      >
-                        {item.children.map((child) => (
-                          <Link
-                            key={child.path}
-                            to={child.path}
-                            onClick={() => setLearnOpen(false)}
-                            className="block px-4 py-2 text-sm text-mist hover:text-ghost hover:bg-deep transition-colors"
-                          >
-                            {child.label}
-                          </Link>
-                        ))}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
+                <DropdownMenu
+                  key={item.label}
+                  item={item}
+                  isOpen={openDropdown === item.label}
+                  onToggle={() => setOpenDropdown(openDropdown === item.label ? null : item.label)}
+                  onClose={() => setOpenDropdown(null)}
+                  pathname={location.pathname}
+                />
               ) : (
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors
-                    ${location.pathname === item.path 
-                      ? 'bg-cyber/20 text-cyber' 
+                  onClick={() => setOpenDropdown(null)}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors
+                    ${location.pathname === item.path
+                      ? 'bg-cyber/20 text-cyber'
                       : 'text-mist hover:text-ghost hover:bg-deep/50'}`}
                 >
-                  <item.icon size={18} />
+                  <item.icon size={16} />
                   {item.label}
                 </Link>
               )
@@ -156,7 +242,7 @@ export default function Header() {
             className="lg:hidden border-t border-deep bg-void/95 backdrop-blur-md"
           >
             <nav className="px-4 py-4 space-y-1">
-              {navItems.map((item) =>
+              {mobileNav.map((item) =>
                 item.children ? (
                   <div key={item.label} className="space-y-1">
                     <div className="px-3 py-2 text-sm font-medium text-mist flex items-center gap-2">
